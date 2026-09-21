@@ -1,0 +1,20 @@
+export function paletteMatches(items, query) {
+  const words=query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter(item=>words.every(word=>`${item.label} ${item.detail||''}`.toLowerCase().includes(word))).slice(0,40);
+}
+export function createCommandPalette({state,switchView,openRepository,action,toast}){
+  document.body.insertAdjacentHTML('beforeend','<dialog id="command-palette" aria-labelledby="palette-title"><div class="dialog-card"><h2 id="palette-title">Go to or run…</h2><label class="search-box"><input id="palette-search" type="search" aria-label="Find a page, repository, or action" placeholder="Search pages, repositories, and actions…" autocomplete="off"></label><p class="settings-help">↑ ↓ to select · Enter to open · Escape to close</p><div id="palette-results"></div><p id="palette-status" role="status"></p><button type="button" id="palette-close" class="text-button">Close</button></div></dialog>');
+  const $=s=>document.querySelector(s),dialog=$('#command-palette'),search=$('#palette-search');let matches=[],selected=0;
+  const pages=[['dashboard','Dashboard'],['repositories','Repositories'],['toolbox','Toolbox'],['terminal','Terminal'],['sync','System Sync'],['backup','Backup & Restore'],['config','Configuration'],['health','System Health'],['services','Services'],['inventory','System inventory'],['activity','Activity'],['attention','Needs attention'],['settings','Settings']];
+  function entries(){return [...pages.map(([id,label])=>({label,detail:'Page',run:()=>switchView(id)})),...state.repositories.map(repo=>({label:repo.name,detail:`Repository · ${repo.path}`,run:()=>openRepository(repo.path)})),...state.settings.customActions.map(a=>({label:a.name,detail:`Custom action · ${a.command}`,run:()=>action({action:'custom',customId:a.id})}))];}
+  function highlight(){[...$('#palette-results').children].forEach((button,index)=>button.classList.toggle('palette-selected',selected===index));}
+  function render(){matches=paletteMatches(entries(),search.value);selected=0;$('#palette-results').replaceChildren();matches.forEach((entry,index)=>{const button=document.createElement('button');button.type='button';button.className='palette-row';const title=document.createElement('strong');title.textContent=entry.label;const detail=document.createElement('small');detail.textContent=entry.detail;button.append(title,detail);button.addEventListener('click',()=>void choose(index));button.addEventListener('focus',()=>{selected=index;highlight();});$('#palette-results').append(button);});$('#palette-status').textContent=matches.length?`${matches.length} results${matches.length===40?' · refine your search for more':''}`:'No matches. Try a page name, repository, or saved action.';highlight();}
+  async function choose(index){const entry=matches[index];if(!entry)return;dialog.close();document.querySelector("#repo-detail-dialog[open]")?.close();try{await entry.run();}catch(error){toast(String(error),true);}}
+  function open(){if([...document.querySelectorAll('dialog[open]')].some(d=>d!==dialog&&d.id!=='repo-detail-dialog'))return;if(!dialog.open)dialog.showModal();search.value='';render();search.focus();}
+  search.addEventListener('input',render);
+  dialog.addEventListener('keydown',event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(!matches.length)return;selected=(selected+(event.key==='ArrowDown'?1:matches.length-1))%matches.length;highlight();$('#palette-results').children[selected]?.scrollIntoView?.({block:'nearest'});if(event.target!==search)$('#palette-results').children[selected]?.focus();}else if(event.key==='Enter'&&event.target===search){event.preventDefault();void choose(selected);}});
+  document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();event.stopPropagation();if(dialog.open)dialog.close();else open();}},true);
+  $('#palette-close').addEventListener('click',()=>dialog.close());
+  const quick=$('#quick-action-button');quick.textContent='⌕ Command palette';quick.title='Ctrl+K';quick.addEventListener('click',open);
+  return {open};
+}

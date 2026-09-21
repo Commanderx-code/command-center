@@ -1,3 +1,5 @@
+import { createSystemWorkflows } from "./system-workflows.js";
+import { createConfigHistory } from "./config-history.js";
 import { renderBackupOverview } from "./backup-overview.js";
 import { mountGitControls } from "./git-controls.js";
 import { createToolbox } from "./toolbox.js";
@@ -565,6 +567,7 @@ export function createFeatures(api) {
       for (const job of jobs) {
         if (job.status === "running" || completed.has(job.id)) continue;
         completed.add(job.id);
+        systemWorkflows.completed(job);
         const callback = callbacks.get(job.id);
         callbacks.delete(job.id);
         if (callback) {
@@ -580,7 +583,7 @@ export function createFeatures(api) {
               true,
             );
         }
-        if (["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch", "fetch", "pull", "push"].includes(job.action)) {
+        if (["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch", "stash-create", "stash-apply", "branch-publish", "fetch", "pull", "push"].includes(job.action)) {
           if (job.action === "commit" && job.status === "succeeded") {
             commitDrafts.delete(job.cwd);
             toast("Commit saved locally. Use Push to publish it.");
@@ -890,6 +893,7 @@ export function createFeatures(api) {
   }
   async function loadConfig() {
     const version = ++configVersion;
+    configHistory.invalidate();
     $("#config-state").textContent = "Loading…";
     configDocument = null;
     $("#config-text").value = "";
@@ -918,6 +922,7 @@ export function createFeatures(api) {
         ? "Edits go to the source. Build and apply Home Manager to activate them."
         : "A timestamped backup is kept when you save.";
       renderConfigControls();
+      void configHistory.refresh();
     } catch (err) {
       if (version === configVersion) {
         $("#config-state").textContent = "Unavailable";
@@ -1109,6 +1114,7 @@ export function createFeatures(api) {
   }
   function onView(view) {
     toolbox.onView(view);
+    systemWorkflows.onView(view);
     if (view === "sync") void refreshSync();
     if (view === "backup") void refreshHealth();
     if (view === "config" && !configDocument) void loadConfig();
@@ -1117,8 +1123,11 @@ export function createFeatures(api) {
   }
   mount();
   const toolbox = createToolbox({ ...api, run, guard, review, action });
+  const systemWorkflows = createSystemWorkflows({...api,run,action});
+  const configHistory = createConfigHistory({$,run,review,getDocument:()=>configDocument,getKind:()=>configKind,setDraft(content){$("#config-text").value=content;$("#config-state").textContent="Unsaved restored draft";renderConfigControls();}});
   return {
     initialize,
+    openRepositoryDetails(path) { switchView("repositories"); return showRepository(path); },
     action,
     onView,
     filtered,

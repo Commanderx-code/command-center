@@ -2,6 +2,7 @@ use tauri::Manager;
 mod configuration;
 mod diagnostics;
 mod health;
+mod system_tools;
 mod git_changes;
 mod custom_actions;
 mod integrations;
@@ -57,8 +58,14 @@ pub fn run() {
             jobs::cancel_job,
             jobs::acknowledge_job,
             configuration::load_configuration,
+            configuration::configuration_history,
+            configuration::configuration_backup,
             configuration::validate_configuration,
             configuration::save_configuration,
+            system_tools::system_units,
+            system_tools::unit_details,
+            system_tools::system_inventory,
+            system_tools::export_inventory,
             health::system_health,
             health::recovery_notes
         ])

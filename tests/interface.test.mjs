@@ -201,7 +201,7 @@ test("backend failures remain visible and do not mark a job as started", async (
     await settle();
     x.$('[data-repo-job="pull"]').click();
     await settle();
-    assert.match(x.$("#toast-message").textContent, /Commit or stash/);
+    assert.match(x.$("#git-change-status").textContent, /Commit or stash/);
     assert.equal(
       x.calls.some((c) => c.command === "start_job"),
       false,
@@ -600,5 +600,60 @@ test('failed Git jobs show output in Details and preserve the commit draft',asyn
     x.$('#activity-refresh').click();await settle();
     assert.match(x.$('#git-change-status').textContent,/failed/);assert.match(x.$('#git-inline-output').textContent,/Author identity/);
     assert.equal(x.$('#commit-message').value,'Keep my message');
+  }finally{x.dom.window.close();}
+});
+
+test('service controls review only user units and keep system units read-only',async()=>{
+  const x=await setup({system_units:{units:[{unit:'backup.service',active:'inactive',sub:'dead',description:'Backup'}],checkedAt:Date.now()},unit_details:{details:'ActiveState=inactive',logs:'journal fixture'}});
+  try{
+    x.$('[data-view="services"]').click();await settle();x.$('[data-unit]').click();await settle();
+    assert.match(x.$('#service-logs').textContent,/journal fixture/);
+    x.$('[data-service-op="start"]').click();await settle();
+    const req=x.calls.find(c=>c.command==='prepare_job').args.request;assert.equal(req.scope,'user');assert.equal(req.unit,'backup.service');assert.equal(req.action,'service-start');
+    x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+    x.$('#service-scope').value='system';x.$('#service-scope').dispatchEvent(new x.w.Event('change'));await settle();x.$('[data-unit]').click();await settle();
+    assert.equal(x.$('[data-service-op]'),null);
+  }finally{x.dom.window.close();}
+});
+test('timer schedule requires review and inventory exports the displayed report',async()=>{
+  const report={format:'command-center-inventory',version:1,checkedAt:Date.now(),os:'Fixture Linux',memory:'MemTotal: 1000 kB',tools:{git:{available:true,output:'git fixture'}}};
+  const x=await setup({system_units:{units:[],checkedAt:Date.now()},system_inventory:report,export_inventory:'/fixture/Downloads/report.json'});
+  try{
+    x.$('[data-view="backup"]').click();await settle();
+    x.$('#schedule-frequency').value='weekly';x.$('#schedule-hour').value='4';x.$('#schedule-minute').value='15';submit(x.w,x.$('#schedule-form'));await settle();
+    const req=x.calls.find(c=>c.command==='prepare_job').args.request;assert.equal(req.action,'schedule-save');assert.equal(req.schedule,'weekly');assert.equal(req.hour,4);assert.equal(req.minute,15);
+    x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+    x.$('[data-view="inventory"]').click();await settle();assert.match(x.$('#inventory-panels').textContent,/Fixture Linux/);
+    x.$('#inventory-export').click();await settle();assert.equal(x.calls.find(c=>c.command==='export_inventory').args.report.os,'Fixture Linux');assert.match(x.$('#inventory-status').textContent,/report.json/);
+  }finally{x.dom.window.close();}
+});
+test('configuration history comparison and restore cannot write without save',async()=>{
+  const x=await setup({configuration_history:[{name:'ghostty-123.bak',bytes:15}],configuration_backup:'font-size = 17\n'});
+  try{
+    x.$('[data-view="config"]').click();await settle();x.$('#config-history-compare').click();await settle();
+    assert.match(x.$('#history-backup').textContent,/17/);assert.match(x.$('#history-current').textContent,/13/);
+    x.$('#config-history-restore').click();await settle();x.$('#review-cancel').click();await settle();assert.match(x.$('#config-text').value,/13/);
+    x.$('#config-history-restore').click();await settle();submit(x.w,x.$('#review-form'));await settle();assert.match(x.$('#config-text').value,/17/);
+    assert.equal(x.calls.some(c=>c.command==='save_configuration'),false);
+  }finally{x.dom.window.close();}
+});
+test('stash restore and branch publishing use selected immutable ID and remote',async()=>{
+  const x=await setup({repository_details:{files:[],commits:[],head:'head',branchRef:'refs/heads/feature',branches:['feature'],stashes:[{id:'abcdef',name:'stash@{0}',subject:'WIP'}],remotes:['origin','backup']}});
+  try{
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    x.$('[data-git="stash-apply"]').click();await settle();let req=x.calls.filter(c=>c.command==='prepare_job').at(-1).args.request;assert.equal(req.stashId,'abcdef');assert.equal(req.action,'stash-apply');
+    x.$('#review-cancel').click();await settle();x.$('#publish-remote').value='backup';x.$('[data-git="branch-publish"]').click();await settle();req=x.calls.filter(c=>c.command==='prepare_job').at(-1).args.request;assert.equal(req.remote,'backup');assert.equal(req.action,'branch-publish');
+    x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+  }finally{x.dom.window.close();}
+});
+test('command palette searches dynamically and does not interrupt a pending review',async()=>{
+  const x=await setup();
+  try{
+    x.w.document.dispatchEvent(new x.w.KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+    assert.equal(x.$('#command-palette').open,true);x.$('#palette-search').value='inventory';x.$('#palette-search').dispatchEvent(new x.w.Event('input'));
+    assert.equal(x.$('#palette-results').children.length,1);x.$('#palette-results button').click();await settle();assert.equal(x.$('#inventory-view').classList.contains('active-view'),true);
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();x.$('[data-repo-job="fetch"]').click();await settle();assert.equal(x.$('#review-dialog').open,true);
+    x.w.document.dispatchEvent(new x.w.KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));assert.equal(x.$('#command-palette').open,false);
+    x.$('#review-cancel').click();await settle();
   }finally{x.dom.window.close();}
 });

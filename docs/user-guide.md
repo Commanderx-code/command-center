@@ -82,7 +82,7 @@ In repository **Details**, click a filename to view its diff, then use **Staged*
 
 Git operations keep Details open. Status, exit code, and available output appear below the commit controls; **View Activity** opens the operation history. A failed commit retains its draft message. **Refresh details** reloads the file list and diff. Commands remain subject to review before execution.
 
-The **Branches** controls list local branches and support **Switch branch** and **Create & switch**. These require an existing commit, no pending changes (including new files), and no active merge/rebase/cherry-pick. New branches remain local. The existing Push action requires an upstream; configure that through your Git terminal before publishing a new branch.
+The **Branches** controls list local branches and support **Switch branch** and **Create & switch**. These require an existing commit, no pending changes (including new files), and no active merge/rebase/cherry-pick. New branches remain local. Use **Review & publish branch** to choose a remote and set the upstream for a new branch. The regular Push action then uses that upstream.
 
 ## Transfer settings
 
@@ -103,3 +103,29 @@ Every run previews the command and working folder and uses the existing job life
 ## Backup overview
 
 Backup & Restore shows the location status reported by your backup-health helper, the exact last successful backup time when available, and the next setup step. A missing report is **unknown**, not proof that a drive is disconnected. Remote Restic locations are labeled as not connection-tested. Personal/full backup buttons require an executable configured helper and are disabled while checking health or when the helper explicitly reports a configured local drive disconnected. Refresh after attaching a drive. Helpers retain their own checks and prompts.
+
+## Services and backup timers
+
+**Services** lists installed and loaded units, filters by name/description/state, and displays properties plus the latest 100 journal entries. User services support reviewed start, stop, and restart operations. System services are view-only; available logs depend on your existing journal permissions. Template units without an instance are omitted. A systemd action can continue in the service manager after its command-line client is stopped; inspect the service state before retrying.
+
+**Backup & Restore → Backup schedules & user timers** shows up to 100 user timers with next and last trigger times, enable state, associated service, and that service’s result/exit code. Enable and Disable also start or stop the timer. Stopping a timer does not stop an already running backup. Use **Service logs** to inspect its target service.
+
+The schedule editor supports hourly, daily, and Sunday weekly runs. It writes only `command-center-backup.service` and `command-center-backup.timer` beneath the user systemd configuration directory. It refuses to replace foreign units or symlinked unit files, and keeps `.bak` copies when updating its own units. The command review includes the schedule, helper, unit contents, and install commands. Existing schedules remain untouched: check for duplicates before enabling another backup timer.
+
+Scheduling uses the personal backup helper saved in Settings, not the full recovery helper. It must run unattended and obtain credentials using its existing setup. The schedule follows local time and uses Persistent timers to catch up missed runs when the user service manager resumes. This does not enable lingering or wake a powered-off computer. Your user service manager must be running for the timer to run. An app-created schedule is read back into the form when refreshed; unsaved form edits are retained.
+
+## Stash and publish
+
+In repository Details, **Review & stash** saves tracked working changes and the index. Select **Include new (untracked) files** when needed; ignored files remain untouched. Git needs an existing commit and no unresolved merge/rebase workflow. **Review & restore stash** requires a clean tree, restores the selected stash including staged state, and retains the stash. If Git reports conflicts, resolve them in your editor or terminal before continuing.
+
+**Review & publish branch** pushes the currently committed branch to the selected configured remote and sets its upstream. It never force-pushes, automatically pushes tags, or commits working changes. An existing remote branch may reject a non-fast-forward push; review the divergence before retrying.
+
+## Configuration history
+
+**Configuration → Configuration history** lists the latest 100 saved versions for the selected application. Select a version and **Compare** to see it next to the current draft. **Review restore to draft** previews the replacement and changes only the editor draft. Use the existing **Review & save** action to validate, check the loaded source revision, back up the current file, and write the restored content. For Home Manager-managed configurations, build and apply the source afterward. History is grouped by application rather than original source path; check the current destination in the review.
+
+## Command palette and inventory
+
+Press **Ctrl+K** (Cmd+K on a Mac keyboard) or click **Command palette** to search pages, repositories, and saved custom actions. Use arrow keys and Enter, or click a result. Opening a repository shows Details. Custom actions still require command review. The palette does not interrupt an open confirmation or settings-import dialog.
+
+**System inventory** collects OS/kernel, CPU, memory, storage, disk usage, and installed tool versions. Missing tools or timed-out probes are marked unavailable. **Export displayed report** saves the currently displayed report as JSON in Downloads. The report can include filesystem mount paths and configuration details printed by version commands; inspect it before sharing. Inventory export does not publish or upload it.

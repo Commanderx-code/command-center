@@ -28,7 +28,7 @@ export function normalize(input = {}) {
     editor: choice('editor', ['auto','kate','nvim','code','codium','zed']),
     terminal: choice('terminal', ['auto','ghostty','konsole','gnome-terminal','kitty','alacritty','wezterm','foot']),
     accent: choice('accent', ['cyan','violet','green']), density: choice('density', ['comfortable','compact']),
-    reducedMotion: s.reducedMotion === true, startupPage: choice('startupPage', ['dashboard', 'repositories', 'toolbox', 'terminal', 'sync', 'backup', 'config', 'health', 'activity', 'attention', 'settings']),
+    reducedMotion: s.reducedMotion === true, startupPage: choice('startupPage', ['dashboard', 'repositories', 'toolbox', 'terminal', 'sync', 'backup', 'config', 'health', 'activity', 'attention', 'services', 'inventory', 'settings']),
     refreshSeconds: choice('refreshSeconds', [0,30,60,300]), scanDepth: choice('scanDepth', [1,2,3,4,5,6]),
     roots: Array.isArray(s.roots) ? [...new Set(s.roots.filter(r => typeof r === 'string' && r.length <= 4096 && !r.includes('\0') && /^(~$|~\/|\/)/.test(r.trim())).map(r => r.trim()))].slice(0,32) : [...defaults.roots]
   };

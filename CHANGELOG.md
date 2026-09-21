@@ -4,6 +4,12 @@ Release downloads and full notes are available on [GitHub Releases](https://gith
 
 ## Unreleased
 
+- Added user-service controls, system-service inspection, and journal views.
+- Added timer inspection and an app-owned personal backup schedule editor.
+- Added stash/restore and branch publishing with explicit command review.
+- Added configuration backup comparison and restore-to-draft.
+- Added a global command palette and exportable system inventory.
+
 - Added file-by-file colored staged/unstaged diffs and persistent Git operation feedback in Details.
 - Added local branch creation and switching with clean-tree and active-operation checks.
 - Added settings export to Downloads and previewed imports with optional machine settings.

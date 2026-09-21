@@ -1,3 +1,4 @@
+import { createCommandPalette } from "./command-palette.js";
 import { createPreferenceExtras } from "./preference-extras.js";
 import { version } from "../package.json";
 import { setupSettingsTools } from "./settings-tools.js";
@@ -123,6 +124,8 @@ async function openRepository(path, target) {
 }
 
 const viewCopy = {
+  services: ["Systemd", "Services"],
+  inventory: ["Diagnostics", "System inventory"],
   toolbox: ["Workstation tools", "Toolbox"],
   terminal: ["Interactive workspace", "Terminal"],
   dashboard: ["Overview", "Good evening, Commander."],
@@ -297,15 +300,9 @@ function bindEvents() {
   $("#repo-search").addEventListener("input", renderRepositoryGrid);
   $("#repo-sort").addEventListener("change", renderRepositoryGrid);
   $("#dismiss-toast").addEventListener("click", () => $("#toast").classList.remove("show"));
-  document.addEventListener("keydown", event => {
-    if (event.target.closest?.("#embedded-terminal")) return;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault(); switchView("repositories"); $("#repo-search").focus();
-    }
-  });
   $("#repo-search").addEventListener("keydown", event => { if (event.key === "Escape") { event.target.value = ""; renderRepositoryGrid(); } });
   $("#repo-filter").addEventListener("change", renderRepositoryGrid);
-  $("#quick-action-button").addEventListener("click", () => switchView("dashboard"));
+
   $$("[data-action]").forEach((button) => button.addEventListener("click", () => {
     const action = button.dataset.action;
     if (action === "sync") loadRepositories(true); else if (action === "config") switchView("config"); else if (action === "backup") switchView("backup"); else if (action === "home-manager") switchView("sync");
@@ -332,4 +329,5 @@ const preferenceExtras = createPreferenceExtras({ state, $, escapeHtml, draftPre
 setupSettingsTools({ invoke, readIntegrations: features.readIntegrations });
 $(".version-badge").textContent = `Version ${version}`;
 bindEvents();
+createCommandPalette({state,switchView,openRepository:features.openRepositoryDetails,action:features.action,toast});
 void initialize();

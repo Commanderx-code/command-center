@@ -76,7 +76,7 @@ impl Settings {
         {
             return Err("Invalid appearance settings".into());
         }
-        if !["dashboard", "repositories", "toolbox", "terminal", "sync", "backup", "config", "health", "activity", "attention", "settings"].contains(&self.startup_page.as_str()) {
+        if !["dashboard", "repositories", "toolbox", "terminal", "sync", "backup", "config", "health", "activity", "attention", "services", "inventory", "settings"].contains(&self.startup_page.as_str()) {
             return Err("Invalid startup page".into());
         }
         if ![0, 30, 60, 300].contains(&self.refresh_seconds) || !(1..=6).contains(&self.scan_depth)
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn accepts_all_workspace_start_pages() {
         let mut settings = Settings::default();
-        for page in ["dashboard", "repositories", "toolbox", "terminal", "sync", "backup", "config", "health", "activity", "attention", "settings"] {
+        for page in ["dashboard", "repositories", "toolbox", "terminal", "sync", "backup", "config", "health", "activity", "attention", "services", "inventory", "settings"] {
             settings.startup_page = page.into();
             assert!(settings.validate().is_ok());
         }

@@ -35,3 +35,16 @@ test('backup overview distinguishes disconnected, unknown, remote and successful
   const remote=backupOverview(health,{...config,resticRepository:'sftp:host:/backup'},now);assert.match(remote.drive,/Remote/);assert.equal(remote.personal,true);
   health.backup.data.drive_mounted=true;assert.equal(backupOverview(health,config,now).personal,true);
 });
+
+import {scheduleFields} from '../src/system-workflows.js';
+import {paletteMatches} from '../src/command-palette.js';
+test('schedule editor recognizes app-owned calendars and rejects unsupported shapes',()=>{
+  assert.deepEqual(scheduleFields('Sun *-*-* 03:15:00'),{schedule:'weekly',hour:3,minute:15});
+  assert.deepEqual(scheduleFields('*-*-* *:05:00'),{schedule:'hourly',hour:0,minute:5});
+  assert.equal(scheduleFields('*-*-* 99:00:00'),null);assert.equal(scheduleFields('arbitrary'),null);
+});
+test('palette search matches all words and limits long result lists',()=>{
+  const rows=[{label:'Dotfiles',detail:'Repository /home/user/dotfiles'},{label:'Backup',detail:'Page'}];
+  assert.equal(paletteMatches(rows,'dot repository').length,1);assert.equal(paletteMatches(rows,'unknown').length,0);
+  assert.equal(paletteMatches(Array(100).fill(rows[0]),'').length,40);
+});

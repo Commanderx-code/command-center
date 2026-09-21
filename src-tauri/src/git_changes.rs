@@ -31,10 +31,13 @@ pub fn snapshot(path: &Path) -> Result<Value, String> {
     let tree = if conflicts { String::new() } else { git(path, &["write-tree"])?.trim().to_owned() };
     let diff = git(path, &["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color", "--patch", "--stat"])?;
     let truncated = diff.len() >= 4_000_000;
+    let stash_text = git(path, &["stash", "list", "--format=%H%x1f%gd%x1f%s"])?;
+    let stashes: Vec<_> = stash_text.lines().filter_map(|line| {let fields:Vec<_>=line.splitn(3,'\x1f').collect(); if fields.len()==3 {Some(json!({"id":fields[0],"name":fields[1],"subject":fields[2]}))}else{None}}).collect();
+    let remotes:Vec<String> = git(path,&["remote"])?.lines().map(String::from).collect();
     let branches = git(path, &["for-each-ref", "--format=%(refname:strip=2)", "refs/heads/"])?;
     let branches: Vec<_> = branches.lines().collect();
     let unstaged = git(path, &["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--patch"])?;
-    Ok(json!({"branches": branches, "unstagedDiff": unstaged, "unstagedTruncated": unstaged.len() >= 4_000_000, "files": files, "stagedDiff": diff, "diffTruncated": truncated,
+    Ok(json!({"stashes":stashes,"remotes":remotes,"branches": branches, "unstagedDiff": unstaged, "unstagedTruncated": unstaged.len() >= 4_000_000, "files": files, "stagedDiff": diff, "diffTruncated": truncated,
         "indexTree": tree, "head": head(path), "branchRef": branch(path), "conflicts": conflicts}))
 }
 fn checked_paths(request: &Request, data: &Value) -> Result<Vec<String>, String> {
@@ -62,7 +65,34 @@ pub fn plan(request: &Request) -> Result<Plan, String> {
     let path = p::repo(&request.path)?;
     let data = snapshot(&path)?;
     let mut args: Vec<String> = vec!["-C".into(), path.to_string_lossy().into_owned(), "--literal-pathspecs".into()];
+    // Stash has no user-supplied pathspecs. Literal pathspec mode interferes with
+    // Git's internal cleanup of untracked files, so do not propagate it to stash.
+    if ["stash-create", "stash-apply"].contains(&request.action.as_str()) { args.pop(); }
     let explanation = match request.action.as_str() {
+        "stash-create" => {
+            ensure_idle(&path)?;
+            if data["head"]=="" || data["conflicts"]==true {return Err("Create a commit and resolve conflicts before stashing".into());}
+            if data["files"].as_array().unwrap().is_empty(){return Err("No changes to stash".into());}
+            if request.message.len()>1000 || request.message.contains('\0'){return Err("Stash message exceeds 1000 bytes or contains an invalid character".into());}
+            args.extend(["stash".into(),"push".into(),"--message".into(),if request.message.trim().is_empty(){"Command Center stash".into()}else{request.message.clone()}]);
+            if request.include=="untracked" {args.push("--include-untracked".into());}
+            "Save current tracked working changes and the index to a stash, then clean those changes from the working tree. New files are included only when requested. Ignored files stay untouched."
+        }
+        "stash-apply" => {
+            ensure_idle(&path)?;
+            if !data["files"].as_array().unwrap().is_empty(){return Err("Commit or stash current changes before applying a stash".into());}
+            if data["head"]!=request.expected_head || data["branchRef"]!=request.branch_ref {return Err("Branch changed; refresh Details and review again".into());}
+            if !data["stashes"].as_array().unwrap().iter().any(|stash|stash["id"]==request.stash_id){return Err("Stash changed or disappeared; refresh Details".into());}
+            args.extend(["stash".into(),"apply".into(),"--index".into(),request.stash_id.clone()]);
+            "Restore this stash, including its staged state. The stash is retained. Git may report conflicts; inspect and resolve them before continuing."
+        }
+        "branch-publish" => {
+            ensure_idle(&path)?;
+            if data["branchRef"]=="" || data["head"]=="" || data["branchRef"]!=request.branch_ref || data["head"]!=request.expected_head {return Err("Refresh Details and select a committed local branch".into());}
+            if request.remote.starts_with('-') || !data["remotes"].as_array().unwrap().iter().any(|remote|remote.as_str()==Some(request.remote.as_str())){return Err("Select a configured Git remote".into());}
+            args.extend(["-c".into(),"push.followTags=false".into(),"push".into(),"--set-upstream".into(),"--porcelain".into(),"--no-force".into(),"--".into(),request.remote.clone(),format!("HEAD:{}",request.branch_ref)]);
+            "Publish the current committed branch to the selected remote and set its upstream. This does not commit working files, force-push, or automatically push tags."
+        }
         "branch-create" | "branch-switch" => {
             if !data["files"].as_array().unwrap().is_empty() { return Err("Commit or stash all changes, including new files, before switching branches".into()); }
             if data["head"] == "" { return Err("Create your first commit before managing branches".into()); }
@@ -218,6 +248,23 @@ mod tests {
         fs::write(path.join("new"), "new content").unwrap();
         assert!(diff_file(path, "new", false).unwrap()["text"].as_str().unwrap().contains("+new content"));
         assert!(diff_file(path, "../outside", false).is_err());
+    }
+
+    #[test]
+    fn stash_apply_retains_stash_and_publish_sets_upstream() {
+        let dir=fixture();let path=dir.path();
+        fs::write(path.join("file"),"base").unwrap();execute(&request(path,"stage-all",&[]));execute(&commit_request(path));
+        fs::write(path.join("file"),"work").unwrap();fs::write(path.join("new"),"new work").unwrap();
+        let mut stash=request(path,"stash-create",&[]);stash.include="untracked".into();stash.message="fixture".into();execute(&stash);
+        let data=snapshot(path).unwrap();assert!(data["files"].as_array().unwrap().is_empty());
+        let id=data["stashes"][0]["id"].as_str().unwrap();
+        let mut apply=request(path,"stash-apply",&[]);apply.stash_id=id.into();apply.expected_head=head(path);apply.branch_ref=branch(path);execute(&apply);
+        assert_eq!(fs::read_to_string(path.join("file")).unwrap(),"work");assert!(path.join("new").exists());
+        assert_eq!(snapshot(path).unwrap()["stashes"][0]["id"],id);
+        let remote=tempfile::tempdir().unwrap();git(remote.path(),&["init","--bare"]).unwrap();git(path,&["remote","add","fixture",remote.path().to_str().unwrap()]).unwrap();
+        let mut publish=request(path,"branch-publish",&[]);publish.remote="fixture".into();publish.expected_head=head(path);publish.branch_ref=branch(path);execute(&publish);
+        assert_eq!(git(path,&["rev-parse","--abbrev-ref","@{upstream}"]).unwrap().trim(),"fixture/main");
+        publish.remote="--all".into();assert!(plan(&publish).is_err());
     }
 
 }

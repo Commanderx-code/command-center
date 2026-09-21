@@ -80,6 +80,13 @@ pub fn detect_integrations() -> Integrations {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Request {
+    pub scope: String,
+    pub unit: String,
+    pub schedule: String,
+    pub hour: u8,
+    pub minute: u8,
+    pub stash_id: String,
+    pub remote: String,
     pub branch_name: String,
     pub custom_id: String,
     pub files: Vec<String>,
@@ -190,7 +197,8 @@ pub fn restic_args(i: &Integrations) -> Result<Vec<String>, String> {
 }
 pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
     s.validate()?;
-    if ["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch"].contains(&r.action.as_str()) {
+    if r.action.starts_with("service-") || r.action.starts_with("timer-") || r.action == "schedule-save" { return crate::system_tools::plan(r,s); }
+    if ["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch", "stash-create", "stash-apply", "branch-publish"].contains(&r.action.as_str()) {
         return crate::git_changes::plan(r);
     }
     if r.action == "custom" { return crate::custom_actions::plan(r, s); }

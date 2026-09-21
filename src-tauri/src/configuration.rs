@@ -376,3 +376,40 @@ mod save_tests {
         assert_eq!(fs::read_to_string(path).unwrap(), "{}");
     }
 }
+
+fn backup_name(kind:&str,name:&str)->bool{
+    if !["ghostty","fastfetch"].contains(&kind){return false;}
+    let prefix = format!("{kind}-");
+    name.strip_prefix(prefix.as_str()).and_then(|s|s.strip_suffix(".bak")).is_some_and(|stamp|!stamp.is_empty()&&stamp.bytes().all(|b|b.is_ascii_digit()))
+}
+#[tauri::command]
+pub fn configuration_history(app:tauri::AppHandle,kind:String)->Result<serde_json::Value,String>{
+    if !["ghostty","fastfetch"].contains(&kind.as_str()){return Err("Unknown configuration kind".into());}
+    let dir=p::data_file(&app,"config-backups")?;
+    let entries=match fs::read_dir(dir){Ok(entries)=>entries,Err(e)if e.kind()==std::io::ErrorKind::NotFound=>return Ok(serde_json::json!([])),Err(e)=>return Err(e.to_string())};
+    let mut rows=Vec::new();
+    for entry in entries {
+        let entry=entry.map_err(|e|e.to_string())?;let name=entry.file_name().to_string_lossy().into_owned();
+        if backup_name(&kind,&name)&&entry.file_type().map_err(|e|e.to_string())?.is_file(){let meta=entry.metadata().map_err(|e|e.to_string())?;rows.push(serde_json::json!({"name":name,"bytes":meta.len()}));}
+    }
+    rows.sort_by(|a,b|b["name"].as_str().cmp(&a["name"].as_str()));rows.truncate(100);
+    Ok(serde_json::json!(rows))
+}
+#[tauri::command]
+pub fn configuration_backup(app:tauri::AppHandle,kind:String,name:String)->Result<String,String>{
+    if !backup_name(&kind,&name){return Err("Invalid backup selection".into());}
+    let path=p::data_file(&app,"config-backups")?.join(name);
+    let meta=fs::symlink_metadata(&path).map_err(|e|e.to_string())?;
+    if !meta.file_type().is_file()||meta.len()>512_000{return Err("Backup is not a regular file or is too large".into());}
+    fs::read_to_string(path).map_err(|e|e.to_string())
+}
+
+#[cfg(test)]
+mod history_tests {
+    use super::*;
+    #[test]
+    fn history_names_are_confined_to_one_configuration_kind(){
+        assert!(backup_name("ghostty","ghostty-123.bak"));
+        for name in ["../ghostty-123.bak","fastfetch-123.bak","ghostty-latest.bak","ghostty-1.bak/other"]{assert!(!backup_name("ghostty",name));}
+    }
+}
