@@ -7,3 +7,6 @@ dist/
 .command-center-backups/
 *.before-ghostty-fix
 __pycache__/
+
+# Local packaging output
+artifacts/

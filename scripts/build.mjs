@@ -1,12 +1,15 @@
-import { cp, mkdir, rm } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const project = dirname(dirname(fileURLToPath(import.meta.url)));
-const output = join(project, "dist");
-
-await rm(output, { recursive: true, force: true });
-await mkdir(output, { recursive: true });
-await cp(join(project, "index.html"), join(output, "index.html"));
-await cp(join(project, "src"), join(output, "src"), { recursive: true });
-console.log("Built static frontend in dist/.");
+import { cp, mkdir } from "node:fs/promises";
+import { build } from "esbuild";
+const root = new URL("../", import.meta.url);
+await mkdir(new URL("dist/src/", root), { recursive: true });
+await cp(new URL("index.html", root), new URL("dist/index.html", root));
+await cp(new URL("src/styles.css", root), new URL("dist/src/styles.css", root));
+await build({
+  entryPoints: [new URL("src/app.js", root).pathname],
+  outfile: new URL("dist/src/app.js", root).pathname,
+  bundle: true,
+  format: "esm",
+  target: "es2022",
+  sourcemap: true,
+});
+console.log("Built Command Center in dist/.");

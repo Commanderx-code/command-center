@@ -161,3 +161,80 @@ button:disabled { cursor:default; }
 @media(max-width:1400px) { .repository-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .content-grid { grid-template-columns:1fr; } }
 @media(max-width:1000px) { .app-shell { grid-template-columns:190px 1fr; } .brand { gap:7px; padding-inline:0; } .brand strong { font-size:12px; } main { padding-inline:20px; } .repository-grid { grid-template-columns:1fr; } .hero-panel { grid-template-columns:1fr; padding:26px; } .orbit { display:none; } .settings-footer { flex-direction:column; align-items:stretch; } .settings-footer p { max-width:100%; margin:0; } :root[data-layout="list"] .repo-card { grid-template-columns:1fr; } :root[data-layout="list"] .repo-card > * { grid-column:1; grid-row:auto; } :root[data-layout="list"] .repo-card h3 { grid-row:1; } :root[data-layout="list"] .repo-card-head { justify-content:flex-start; } .repo-row { grid-template-columns:32px minmax(0,1fr) auto; } .repo-row .branch { display:none; } }
 .live-label { color:var(--positive); }
+
+/* Connected workstation modules */
+.module-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin:0 0 24px; }
+.module-heading h2 { margin:5px 0 10px; font-size:28px; letter-spacing:-.035em; }
+.module-heading p:not(.eyebrow) { color:var(--muted); font-size:13px; line-height:1.65; margin:0; max-width:650px; }
+.module-panel { padding:24px; margin-bottom:18px; min-width:0; }
+.module-panel h3 { font-size:15px; margin:0 0 16px; }
+.module-panel h3:not(:first-child) { margin-top:24px; }
+.module-columns { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+.module-columns > * { min-width:0; }
+.button-row { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.button-row .primary-button, .button-row .secondary-button { height:auto; min-height:38px; padding-block:8px; }
+.module-empty { color:var(--muted); font-size:13px; line-height:1.7; padding:20px 0; margin:0; }
+.status-strip { padding:14px 18px; margin:16px 0; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--muted); font-size:12px; overflow-wrap:anywhere; line-height:1.7; }
+.output, .command-line, .terminal-preview { white-space:pre-wrap; overflow-wrap:anywhere; padding:16px; border:1px solid var(--line); border-radius:9px; background:var(--bg); color:inherit; font:12px/1.7 ui-monospace, monospace; max-height:400px; overflow:auto; }
+.command-line { color:var(--muted); max-height:130px; }
+.live-output { height:440px; max-height:60vh; }
+.compact-output { max-height:190px; }
+.path-label { color:var(--muted); font:12px/1.6 ui-monospace,monospace; overflow-wrap:anywhere; }
+.error-text { color:var(--amber); font-size:12px; }
+.wide-dialog { width:min(940px,94vw); max-height:90vh; overflow:auto; background:var(--panel-strong); color:inherit; }
+.wide-dialog .dialog-card { padding:28px; }
+.wide-dialog .dialog-heading { gap:20px; margin-bottom:20px; }
+.wide-dialog .module-columns { margin-top:24px; }
+.wide-dialog .dialog-actions { position:sticky; bottom:-28px; padding:16px 0; background:var(--panel-strong); }
+.stack-form { display:grid; gap:16px; margin-top:24px; }
+.stack-form label { display:grid; gap:8px; font-size:12px; color:inherit; }
+.stack-form small { font-size:11px; color:var(--muted); line-height:1.6; }
+.stack-form input:not([type=checkbox]),.stack-form select,.button-row input,.button-row select,.integration-field input,.toolbar select { min-width:0; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--bg); color:inherit; font-size:12px; }
+.button-row input { flex:1; }
+.button-row select { width:auto; }
+.check-row { display:flex; flex-wrap:wrap; gap:18px; }
+.check-row label { display:flex; gap:8px; align-items:center; }
+.check-row input { accent-color:var(--cyan); }
+.file-list,.commit-list { list-style:none; padding:0; max-height:250px; overflow:auto; }
+.file-list li,.commit-list li { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); font-size:12px; overflow-wrap:anywhere; }
+.file-list code,.commit-list code { color:var(--cyan); white-space:pre; flex-shrink:0; }
+.commit-list small { display:block; color:var(--muted); margin-top:5px; }
+.favorite-button { color:var(--muted); background:transparent; border:0; font-size:18px; padding:0 8px 0 0; cursor:pointer; }
+.favorite-button[aria-pressed=true] { color:var(--amber); }
+#favorites-filter[aria-pressed=true] { color:var(--cyan); border-color:var(--cyan); }
+.repo-extra-actions { display:flex; gap:8px; margin-top:9px; }
+.repo-extra-actions button { min-height:29px; flex:1; font-size:10px; }
+:root[data-layout=list] .repo-extra-actions { grid-column:3; grid-row:4; margin-top:0; }
+:root[data-layout=list] .repo-card-actions { grid-row:1 / 3; }
+.toolbar { flex-wrap:wrap; }
+.toolbar select { width:auto; }
+.toolbar label { display:flex; align-items:center; gap:12px; font-size:12px; }
+#config-state { margin-left:auto; color:var(--muted); align-self:center; font-size:12px; }
+.integration-section { grid-column:1/-1; }
+.integration-field { display:grid; grid-template-columns:1fr 1.5fr; gap:20px; padding:16px 0; border-bottom:1px solid var(--line); align-items:center; }
+.integration-field span { font-size:12px; }
+.integration-field small { display:block; font-size:11px; color:var(--muted); line-height:1.5; margin-top:5px; }
+.activity-layout { display:grid; grid-template-columns:minmax(220px, .7fr) minmax(0,1.7fr); gap:18px; }
+#job-list { max-height:75vh; overflow:auto; padding:12px; }
+.job-row,.snapshot-row { width:100%; background:transparent; color:inherit; border:1px solid transparent; border-bottom-color:var(--line); text-align:left; padding:15px 12px; display:grid; gap:7px; cursor:pointer; border-radius:7px; }
+.job-row strong,.snapshot-row strong { font-size:12px; }
+.job-row small,.snapshot-row small { color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.job-row.selected,.snapshot-row.selected { background:var(--bg); border-color:var(--cyan); }
+.job-status { color:var(--muted); text-transform:uppercase; font-size:9px; letter-spacing:.1em; }
+.job-status.running { color:var(--cyan); }.job-status.succeeded { color:var(--green); }.job-status.failed,.job-status.interrupted,.job-status.timed-out { color:var(--amber); }
+.attention-dashboard { margin-top:18px; }
+.attention-row { display:grid; grid-template-columns:28px 1fr 20px; gap:12px; width:100%; align-items:center; padding:15px 0; border:0; border-top:1px solid var(--line); background:transparent; color:inherit; text-align:left; cursor:pointer; }
+.attention-row strong { font-size:12px; }.attention-row small { display:block; margin-top:5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.attention-mark { display:grid; place-items:center; width:25px; height:25px; border-radius:50%; color:var(--amber); background:rgba(255,190,90,.08); }
+.readiness-row { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); padding:14px 0; font-size:12px; }
+.readiness-row div { flex:1; }.readiness-row small { display:block; color:var(--muted); margin-top:5px; overflow-wrap:anywhere; }
+.file-browser,.module-order { max-height:320px; overflow:auto; margin:14px 0; }
+.browser-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:11px; }
+.browser-row span { overflow-wrap:anywhere; min-width:0; }.browser-row span:nth-last-of-type(1) { flex:1; }
+.browser-row button { min-height:28px; padding:4px 8px; flex-shrink:0; }
+.code-editor { width:100%; min-height:480px; resize:vertical; margin:16px 0; padding:16px; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; font:12px/1.65 ui-monospace,monospace; tab-size:4; }
+.terminal-preview { min-height:220px; color:var(--cyan); }
+#snapshots { max-height:650px; overflow:auto; }
+:root[data-text-size=large] .module-panel, :root[data-text-size=large] .module-panel p, :root[data-text-size=large] .output, :root[data-text-size=large] .stack-form label { font-size:15px; }
+:root[data-theme=light] .wide-dialog { color:#172235; }
+@media(max-width:1100px) { .module-columns,.activity-layout { grid-template-columns:1fr; }.module-heading { flex-direction:column; }.integration-field { grid-template-columns:1fr; gap:10px; }:root[data-layout=list] .repo-extra-actions { grid-column:1; grid-row:auto; } }

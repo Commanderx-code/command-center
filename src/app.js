@@ -1,3 +1,4 @@
+import { createFeatures } from "./features.js";
 import { needsAttention, statusParts, selectRepositories } from "./repository-view.js";
 import { defaults, normalize, readBrowserSettings } from "./preferences.js";
 const invoke = window.__TAURI__?.core?.invoke;
@@ -57,16 +58,17 @@ function renderDashboardRepos() {
 function renderRepositoryGrid() {
   const search = $("#repo-search").value.trim().toLowerCase();
   const filter = $("#repo-filter").value;
-  const repos = selectRepositories(state.repositories, search, filter, $("#repo-sort").value || state.settings.repoSort);
+  const repos = selectRepositories(features.filtered(state.repositories), search, filter, $("#repo-sort").value || state.settings.repoSort);
   const target = $("#repository-grid");
   $("#repo-results").textContent = `${repos.length} of ${state.repositories.length} repositories`;
   if (!repos.length) {
-    const hasFilters = search || filter !== "all";
+    const hasFilters = search || filter !== "all" || $("#repo-group").value || $("#favorites-filter").getAttribute("aria-pressed") === "true";
     target.innerHTML = `<div class="empty-state panel"><div><h3>${hasFilters ? "No matching repositories" : "Your workspace starts here"}</h3><p>${hasFilters ? "Try a different search or clear your filters." : "Add a folder containing Git projects in Settings."}</p><button class="secondary-button" id="empty-action">${hasFilters ? "Clear filters" : "Add scan folders"}</button></div></div>`;
     $("#empty-action").addEventListener("click", () => {
-      if (hasFilters) { $("#repo-search").value = ""; $("#repo-filter").value = "all"; renderRepositoryGrid(); }
+      if (hasFilters) { $("#repo-search").value = ""; $("#repo-filter").value = "all"; $("#repo-group").value = ""; $("#repo-group").dispatchEvent(new Event("change")); if ($("#favorites-filter").getAttribute("aria-pressed") === "true") $("#favorites-filter").click(); renderRepositoryGrid(); }
       else openSettings();
     });
+    features.decorateRepositories();
     return;
   }
   target.innerHTML = repos.map((repo) => `<article class="repo-card"><div class="repo-card-head"><div class="repo-glyph" aria-hidden="true">${escapeHtml(repo.name.slice(0, 2).toUpperCase())}</div><div class="repo-badges">${badgeMarkup(repo)}</div></div><h3 title="${escapeHtml(repo.name)}">${escapeHtml(repo.name)}</h3><div class="path" title="${escapeHtml(repo.path)}">${escapeHtml(repo.path)}</div><div class="repo-card-details"><span class="detail-chip branch-chip" title="Branch">⌘ ${escapeHtml(repo.branch || "detached")}</span><span class="detail-chip commit-chip" title="${escapeHtml(repo.last_commit || "No commits yet")}">${escapeHtml(repo.last_commit || "No commits yet")}</span></div><div class="repo-card-actions"><button data-open="editor" data-path="${escapeHtml(repo.path)}" aria-label="Open ${escapeHtml(repo.name)} in editor">Open editor</button><button data-open="terminal" data-path="${escapeHtml(repo.path)}" aria-label="Open terminal for ${escapeHtml(repo.name)}">Terminal</button>${repo.remote_url ? `<button data-open="remote" data-path="${escapeHtml(repo.path)}" aria-label="Open remote for ${escapeHtml(repo.name)}">Remote ↗</button>` : ""}</div></article>`).join("");
@@ -75,6 +77,7 @@ function renderRepositoryGrid() {
     try { await openRepository(button.dataset.path, button.dataset.open); }
     finally { button.disabled = false; }
   }));
+  features.decorateRepositories();
 }
 
 function updateStats() {
@@ -123,6 +126,8 @@ const viewCopy = {
   backup: ["Recovery", "Backup & Restore"],
   config: ["Personalize", "Configuration"],
   health: ["Diagnostics", "System Health"],
+  activity: ["Operations", "Activity"],
+  attention: ["Overview", "Needs attention"],
   settings: ["Preferences", "Settings"]
 };
 
@@ -135,6 +140,7 @@ const placeholderCopy = {
 
 function switchView(view) {
   state.activeView = view;
+  features.onView(view);
   if (view !== "settings") applyAppearance(state.settings);
   else if (state.preferencesDirty) { try { applyAppearance(draftPreferences()); } catch {} }
   $$(".nav-item[data-view]").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
@@ -203,13 +209,14 @@ function populatePreferences(prefs) {
   $("#pref-paths").checked = prefs.showPaths;
   $("#pref-hero").checked = prefs.showHero;
   $("#pref-roots").value = prefs.roots.join("\n");
+  features.populateIntegrations(prefs.integrations);
 }
 
 function draftPreferences() {
   const roots = $("#pref-roots").value.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
   if (roots.length > 32 || roots.some(r => r.length > 4096 || r.includes("\0") || !/^(~$|~\/|\/)/.test(r))) throw new Error("Use up to 32 absolute or ~/ folder paths, one per line.");
   if (!$("#pref-name").value.trim()) throw new Error("Enter a display name.");
-  return normalize({ displayName: $("#pref-name").value, editor: $("#pref-editor").value,
+  return normalize({ integrations: features.readIntegrations(), displayName: $("#pref-name").value, editor: $("#pref-editor").value,
     terminal: $("#pref-terminal").value, accent: $("#pref-accent").value, density: $("#pref-density").value,
     theme: $("#pref-theme").value, textSize: $("#pref-text-size").value,
     repoLayout: $("#pref-layout").value, repoSort: $("#pref-sort").value,
@@ -235,6 +242,8 @@ async function savePreferences(event) {
     populatePreferences(next);
     $("#settings-status").textContent = state.desktop ? "Saved on this device." : "Saved in this browser preview.";
     toast("Settings saved");
+    void features.refreshHealth();
+    void features.refreshSync();
     void loadRepositories();
   } catch (error) {
     $("#settings-status").textContent = `Not saved: ${error.message || error}`;
@@ -257,7 +266,7 @@ async function initialize() {
         await invoke("save_settings", { settings: prefs });
       }
     } else prefs = readBrowserSettings(localStorage);
-  } catch (error) { status = `Could not load preferences: ${error}. Defaults shown; save to replace the settings file (a backup will be kept).`; }
+  } catch (error) { state.settingsLoadFailed = true; status = `Could not load preferences: ${error}. Defaults shown; save to replace the settings file (a backup will be kept).`; }
   state.settings = normalize(prefs);
   state.roots = state.settings.roots;
   state.activeView = state.settings.startupPage;
@@ -268,6 +277,7 @@ async function initialize() {
   $("#preferences-form").inert = false;
   $("#save-preferences").disabled = true;
   $("#discard-preferences").disabled = true;
+  await features.initialize();
   void loadRepositories();
 }
 
@@ -290,7 +300,7 @@ function bindEvents() {
   $("#quick-action-button").addEventListener("click", () => switchView("dashboard"));
   $$("[data-action]").forEach((button) => button.addEventListener("click", () => {
     const action = button.dataset.action;
-    if (action === "sync") loadRepositories(true); else if (action === "config") switchView("config"); else toast(`${button.querySelector("strong").textContent} is planned for Phase 2`);
+    if (action === "sync") loadRepositories(true); else if (action === "config") switchView("config"); else if (action === "backup") switchView("backup"); else if (action === "home-manager") switchView("sync");
   }));
   $("#preferences-form").addEventListener("submit", savePreferences);
   $("#preferences-form").addEventListener("input", updateDraftStatus);
@@ -308,6 +318,7 @@ function bindEvents() {
   });
 }
 
+const features = createFeatures({state, $, $$, escapeHtml, toast, switchView, loadRepositories, renderRepositoryGrid});
 $("#preferences-form").inert = true;
 bindEvents();
 void initialize();

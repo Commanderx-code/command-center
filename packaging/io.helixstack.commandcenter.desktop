@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Command Center
+Comment=Repositories, configuration, backup, and recovery
+Exec=command-center
+Icon=io.helixstack.commandcenter
+Terminal=false
+Categories=Development;
+StartupWMClass=Command Center
