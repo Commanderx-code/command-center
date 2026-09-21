@@ -37,7 +37,7 @@ Command Center brings [Commander Toolbox](https://github.com/Commanderx-code/com
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Toolbox**              | Browse 215 bundled actions through the TUI's folders and submenus. Search, save favorites, and choose Myfish, dotfiles, or application setups.    |
 | **Interactive terminal** | Run Toolbox actions with real keyboard input, password prompts, resizing, cancellation, and exit status. Choose an external terminal when needed. |
-| **Repositories**         | Inspect changes and history, fetch, pull, push, organize projects, and open your editor, terminal, or project documentation.                      |
+| **Repositories**         | Inspect changes and history, stage files, review and commit staged changes, fetch, pull, push, organize projects, and open your editor, terminal, or project documentation.                      |
 | **System Sync**          | Review dotfiles changes and Home Manager generations, then build and apply your configuration.                                                    |
 | **Backup & Restore**     | Run your backup helpers, browse Restic snapshots, and restore files into a new folder.                                                            |
 | **Configuration**        | Edit Ghostty and Fastfetch through visual controls or source editors, with validation and backups.                                                |
@@ -49,12 +49,12 @@ The app runs as your normal user. Commands are reviewed before execution; Toolbo
 
 **[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-| Package         | Download v0.3.2                                                                                                                 | Install the downloaded file                            |
+| Package         | Download v0.3.3                                                                                                                 | Install the downloaded file                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.2/command-center_0.3.2_amd64.deb)     | `sudo apt install ./command-center_0.3.2_amd64.deb`    |
-| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.2/command-center-0.3.2-1.x86_64.rpm) | `sudo dnf install ./command-center-0.3.2-1.x86_64.rpm` |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.3/command-center_0.3.3_amd64.deb)     | `sudo apt install ./command-center_0.3.3_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.3/command-center-0.3.3-1.x86_64.rpm) | `sudo dnf install ./command-center-0.3.3-1.x86_64.rpm` |
 
-Version 0.3.2 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. They were built on Arch/Garuda; cross-distribution installation has not yet been tested. Release assets include `SHA256SUMS` for verification.
+Version 0.3.3 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. They were built on Arch/Garuda; cross-distribution installation has not yet been tested. Release assets include `SHA256SUMS` for verification.
 
 For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 

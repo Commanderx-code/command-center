@@ -2,6 +2,16 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.3.3](https://github.com/Commanderx-code/command-center/releases/tag/v0.3.3) — 2026-09-21
+
+- Added staging, unstaging, staged diff review, and local commits in repository Details, with command review and Activity results.
+- Added settings search and section navigation that preserve unsaved drafts.
+- Added integration availability checks for draft paths, helpers, and installed tools.
+- Enabled every workspace as a startup page and improved stale health-result handling.
+- Refreshed repository documentation and download links.
+
+Linux x86_64 `.deb` and `.rpm` packages require glibc 2.39+, GTK 3, and WebKitGTK 4.1. Cross-distribution installation has not yet been tested.
+
 ## [0.3.2](https://github.com/Commanderx-code/command-center/releases/tag/v0.3.2) — 2026-09-21
 
 ### Highlights

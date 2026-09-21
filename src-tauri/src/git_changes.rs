@@ -59,24 +59,23 @@ pub fn plan(request: &Request) -> Result<Plan, String> {
     let path = p::repo(&request.path)?;
     let data = snapshot(&path)?;
     let mut args: Vec<String> = vec!["-C".into(), path.to_string_lossy().into_owned(), "--literal-pathspecs".into()];
-    let explanation;
-    match request.action.as_str() {
+    let explanation = match request.action.as_str() {
         "stage" => {
             let paths = checked_paths(request, &data)?;
             args.extend(["add".into(), "--all".into(), "--".into()]); args.extend(paths);
-            explanation = "Stage the current contents and deletions of the selected files. This does not commit or push.";
+            "Stage the current contents and deletions of the selected files. This does not commit or push."
         }
         "stage-all" => {
             if data["conflicts"] == true { return Err("Resolve conflicts before staging all files".into()); }
             args.extend(["add", "--all", "--", "."].map(String::from));
-            explanation = "Stage all current changes, including new files and deletions, throughout this repository. Ignored files remain ignored.";
+            "Stage all current changes, including new files and deletions, throughout this repository. Ignored files remain ignored."
         }
         "unstage" => {
             let paths = checked_paths(request, &data)?;
             if data["head"] == "" { args.extend(["rm", "--cached", "-r", "-f", "--"].map(String::from)); }
             else { args.extend(["reset", "--quiet", "HEAD", "--"].map(String::from)); }
             args.extend(paths);
-            explanation = "Remove selected changes from staging. Working files remain on disk.";
+            "Remove selected changes from staging. Working files remain on disk."
         }
         "commit" => {
             if request.message.trim().is_empty() || request.message.len() > 10000 || request.message.contains('\0') { return Err("Enter a commit message of 1–10000 bytes".into()); }
@@ -89,10 +88,10 @@ pub fn plan(request: &Request) -> Result<Plan, String> {
                 if path.join(marker_path.trim()).exists() { return Err("Finish the active merge, rebase, or cherry-pick in your terminal first".into()); }
             }
             args.extend(["commit".into(), "-m".into(), request.message.clone()]);
-            explanation = "Commit the staged changes using your Git identity, hooks, and signing configuration. Unstaged changes stay outside the commit. Push is a separate action. If signing or hooks need a terminal prompt, commit in your terminal.";
+            "Commit the staged changes using your Git identity, hooks, and signing configuration. Unstaged changes stay outside the commit. Push is a separate action. If signing or hooks need a terminal prompt, commit in your terminal."
         }
         _ => return Err("Unsupported Git change action".into()),
-    }
+    };
     let mut plan = Plan::new(&format!("{} · {}", request.action, path.file_name().unwrap_or_default().to_string_lossy()), "git", args, &path);
     plan.explanation = explanation.into();
     Ok(plan)

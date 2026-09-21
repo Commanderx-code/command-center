@@ -6,7 +6,7 @@
 
 Download a package and `SHA256SUMS` from the [GitHub releases page](https://github.com/Commanderx-code/command-center/releases/latest).
 
-The v0.3.2 packages target **Linux x86_64 / amd64** and require **glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1**. Packages declare these dependencies. They were built on Arch/Garuda Linux; installation on other distributions has not yet been tested. ARM, Windows, and macOS packages are not currently published.
+The v0.3.3 packages target **Linux x86_64 / amd64** and require **glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1**. Packages declare these dependencies. They were built on Arch/Garuda Linux; installation on other distributions has not yet been tested. ARM, Windows, and macOS packages are not currently published.
 
 To verify a downloaded package, put it and `SHA256SUMS` in the same directory and run:
 
@@ -19,13 +19,13 @@ Each downloaded package must report `OK`. The `--ignore-missing` option lets you
 On a compatible Debian/Ubuntu system:
 
 ```bash
-sudo apt install ./command-center_0.3.2_amd64.deb
+sudo apt install ./command-center_0.3.3_amd64.deb
 ```
 
 On a compatible Fedora/RPM system:
 
 ```bash
-sudo dnf install ./command-center-0.3.2-1.x86_64.rpm
+sudo dnf install ./command-center-0.3.3-1.x86_64.rpm
 ```
 
 Launch **Command Center** from your application menu. Run the app as your normal user, without `sudo`.
