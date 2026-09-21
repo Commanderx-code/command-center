@@ -1,108 +1,94 @@
-# Command Center
+<p align="center">
+  <img src="src-tauri/icons/command-center.svg" alt="Command Center icon" width="88" />
+</p>
 
-A local Linux workstation dashboard built with Tauri, Rust, and JavaScript. Version 0.3 adds the full Commander Toolbox catalog and an interactive terminal alongside repository management, Home Manager, backups, configuration, and system health.
+<h1 align="center">Command Center</h1>
 
-## What works
+<p align="center"><strong>Your Linux workstation, under control.</strong></p>
 
-- **Toolbox:** all 215 bundled actions across Applications Setup, Gaming, Security, System Setup, and Utilities. Browse the same folders and nested submenus as the TUI, navigate with breadcrumbs or Up, search within a folder and its descendants, filter by availability, keep favorites, and choose Myfish, dotfiles, or application setups through graphical selectors. Run one reviewed action at a time in the embedded terminal or your preferred external terminal.
-- **Interactive terminal:** real PTY input, password prompts, ANSI menus, resizing, cancellation, and exit status. Terminal output stays in a bounded 1 MB memory buffer and is never written to Activity. Save output explicitly if you need a private local transcript. The embedded terminal supports text/ANSI; use an external terminal for image graphics.
+<p align="center">
+  A desktop home for your repositories, Toolbox, configuration, backups, and system health.<br />
+  Built with Tauri, Rust, and JavaScript. Runs locally, with no account or cloud service.
+</p>
 
-- **Repositories:** scan configurable roots, inspect branches and local changes, search/filter/sort, favorites, groups, changed-file lists, recent commits, and editor/terminal/remote launchers. Fetch updates remote-tracking information; pull requires a clean tracked branch and uses fast-forward only; push targets that branch's upstream without force or automatic tags.
-- **Launch profiles:** save a documentation URL and choose whether a project opens its editor, terminal, and documentation together.
-- **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Only one operation runs at a time. Background output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
-- **System Sync:** inspect dotfiles changes, compare Ghostty/Fastfetch sources with their live files, view Home Manager generations, fetch/pull the config repository, build, and apply Home Manager.
-- **Backup & Restore:** run your personal backup helper, run the full recovery helper in a terminal for encryption prompts, load recent Restic snapshots, browse directories, check repository metadata, and restore a snapshot or selected path/pattern into a new folder beneath your home directory.
-- **Configuration:** Ghostty font, theme, padding, opacity, and cursor controls; Fastfetch logo/separator controls and module add/remove/reordering. Both include a source editor and illustrative preview. Ghostty uses its installed validator. Fastfetch validates JSONC syntax and module structure; it does not execute command modules or claim full runtime/schema validation.
-- **System Health:** filesystem usage, failed user/system services, battery information, cached Arch package updates, installed tools, and locally recorded backup freshness.
-- **Needs attention:** changed/unpushed/behind repositories, unreviewed failed jobs, overdue or unavailable backup records, disks at least 90% full, and failed services.
-- **Recovery readiness:** check for the dotfiles checkout, Home Manager flake, backup drive, encrypted recovery files, and recovery instructions. Presence checks do not verify decryption or bootable recovery.
-- **Preferences:** persistent appearance and application settings, card/list layouts, scan limits, refresh intervals, and editable integration paths.
+<p align="center">
+  <a href="https://github.com/Commanderx-code/command-center/releases/latest"><img src="https://img.shields.io/github/v/release/Commanderx-code/command-center?style=flat-square&amp;color=27b7cd" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/platform-Linux-27b7cd?style=flat-square" alt="Platform: Linux" />
+  <img src="https://img.shields.io/badge/desktop-Tauri_2-7371fc?style=flat-square" alt="Desktop: Tauri 2" />
+</p>
 
-## Run or install
+<p align="center">
+  <a href="https://github.com/Commanderx-code/command-center/releases/latest">Download</a> ·
+  <a href="docs/installation.md">Installation</a> ·
+  <a href="docs/user-guide.md">User guide</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="https://github.com/Commanderx-code/command-center/issues">Feedback</a>
+</p>
 
-Install the standard Tauri prerequisites on Arch/Garuda:
+![Command Center dashboard showing repository status, configuration, backup, and system-health cards](docs/images/dashboard.jpg)
 
-```bash
-sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module librsvg
-npm install
-npm run tauri dev
-```
+_Dashboard in browser preview mode with sample data. System integrations run in the desktop app._
 
-To build a release executable and install a per-user application-menu entry:
+## One place for everyday workstation tasks
 
-```bash
-npm run desktop:install
-```
+Command Center brings [Commander Toolbox](https://github.com/Commanderx-code/commander-toolbox) into a graphical desktop app and connects it to the tools you already use. Browse installers, review commands, manage Git repositories, and work with your existing Home Manager and Restic setup.
 
-This installs `~/.local/bin/command-center`, its icon, and a desktop entry. No root access is needed. Launch **Command Center** from your application menu. An existing installed executable is retained as `command-center.previous` when replaced.
+| Workspace                | What you can do                                                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Toolbox**              | Browse 215 bundled actions through the TUI's folders and submenus. Search, save favorites, and choose Myfish, dotfiles, or application setups.    |
+| **Interactive terminal** | Run Toolbox actions with real keyboard input, password prompts, resizing, cancellation, and exit status. Choose an external terminal when needed. |
+| **Repositories**         | Inspect changes and history, fetch, pull, push, organize projects, and open your editor, terminal, or project documentation.                      |
+| **System Sync**          | Review dotfiles changes and Home Manager generations, then build and apply your configuration.                                                    |
+| **Backup & Restore**     | Run your backup helpers, browse Restic snapshots, and restore files into a new folder.                                                            |
+| **Configuration**        | Edit Ghostty and Fastfetch through visual controls or source editors, with validation and backups.                                                |
+| **Health & Activity**    | Check disk space, services, backup freshness, and repository attention items. Review commands and recorded job results.                           |
 
-Published `.deb` and `.rpm` downloads are available on the [GitHub releases page](https://github.com/Commanderx-code/command-center/releases). Version 0.3.2 packages target Linux x86_64 and require glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. Verify downloads against the accompanying `SHA256SUMS` file.
+The app runs as your normal user. Commands are reviewed before execution; Toolbox scripts retain their own privilege checks and confirmations. Integration paths are editable in **Settings**. See the [user guide](docs/user-guide.md) for exact behavior and limitations.
 
-Other build commands:
+## Download and install
 
-```bash
-npm run desktop:build       # release executable, no package
-npm run desktop:package     # .deb and .rpm packages under src-tauri/target/release/bundle/
-npm run dev                 # browser preview at http://127.0.0.1:4173
-```
+**[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-The browser preview uses sample repositories/configs. It cannot run Git operations, access backups, launch applications, or save real configuration files. Source changes rebuild automatically during preview; refresh the browser to load them.
+| Package         | Download v0.3.2                                                                                                                 | Install the downloaded file                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.2/command-center_0.3.2_amd64.deb)     | `sudo apt install ./command-center_0.3.2_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.3.2/command-center-0.3.2-1.x86_64.rpm) | `sudo dnf install ./command-center-0.3.2-1.x86_64.rpm` |
 
-## Connect your setup
+Version 0.3.2 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. They were built on Arch/Garuda; cross-distribution installation has not yet been tested. Release assets include `SHA256SUMS` for verification.
 
-On the first desktop launch without a configured dotfiles integration, Command Center detects your existing `~/.config/dotfiles/machine.json`, installed backup helpers, and Ghostty/Fastfetch source paths. Existing preferences are retained. Review **Settings → System integrations**; **Detect existing setup** can populate a new draft later.
+For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 
-- **Dotfiles repository** points to the checkout. The Home Manager flake may be in its `home-manager/` directory or repository root. **Home Manager profile** is the flake output name, such as `commander`.
-- **Backup helpers** are executable paths to your existing `backup-personal`, `backup-everything`, and `backup-health` helpers. The health helper must return the dotfiles backup-health JSON format. These scripts continue using their own machine configuration.
-- **Restic repository and credentials** control snapshot browsing, checks, and restores. Use an existing KWallet entry, password file, or inherited Restic credential environment. Password contents are never stored in preferences. A locked wallet can prompt through KWallet.
-- **Configuration sources** must be editable files inside your home. Files resolving into `/nix/store` are never modified. For the existing dotfiles layout, a Home Manager-managed Fastfetch config maps to `configs/fastfetch/config.jsonc`. Other layouts can be set manually. Save the source, then build/apply Home Manager to activate it.
-- **Recovery instructions** can point to a dedicated recovery document. Detection falls back to the dotfiles README if no recovery-specific file is found; review that choice.
+## Get started
 
-## Toolbox integration
+1. Launch **Command Center** from your application menu.
+2. Open **Settings** to choose repository scan folders, your editor, and your terminal.
+3. Review **Settings → System integrations** to connect existing dotfiles, Home Manager, backup helpers, and Restic credentials.
+4. Open **Toolbox** to browse folders, choose an action, and **Review & run**.
 
-The desktop links directly to `linutil_core` from Commander Toolbox at commit `6a7edbf834ee60c88bd24f7c6cab853329c8f38e`. Its embedded script tree, relative imports, interpreter selection, and preconditions remain shared with the TUI. A worker owns the extracted tree for the lifetime of the app. Compatibility is checked again during review and immediately before execution. There is no runtime download of the catalog; individual scripts can download their normal dependencies.
+Existing integrations can be detected on first launch or with **Detect existing setup**. Missing tools are shown as unavailable. Read [Connect your setup](docs/user-guide.md#connect-your-setup) for configuration details.
 
-Open a category folder, then its subfolders to reach a tool. Category buttons are shortcuts to the top-level folders. Search and favorites show matching tools within the current folder; use **All tools** to search the entire catalog. **Open containing folder** takes a search result back to its menu.
+## Develop locally
 
-Use **Toolbox → Quick setup** to select a Myfish shell, dotfiles configuration, or application, then **Review & run**. Installer-specific choices and confirmations remain in the original script. **Run tools in** selects the embedded terminal or the external terminal configured in Settings. Return to a session from **Terminal** or its Activity entry. Only the latest session buffer remains available; it is lost on app exit. External terminal output stays external.
-
-Future catalog updates require updating the pinned revision in `src-tauri/Cargo.toml` and `src-tauri/src/toolbox.rs`, refreshing Cargo.lock, running the checks below, and rebuilding. No sibling checkout is needed to build or run Command Center. Toolbox favorites are stored in the webview’s local storage. Activity records the action ID and bundled revision, but no terminal input or transcript.
-
-## Operational behavior
-
-Every operation displays its exact command and working directory for review. Repository Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
-
-Background jobs show output and a recorded exit status. Full recovery backups use a terminal and write a completion receipt back to the app; terminal input/output is not captured. If the terminal closes without a receipt, use **Terminal closed? Stop monitoring** only after checking that the workflow has stopped. Closing the app normally is blocked while a job is running. After a crash, previously running jobs are marked interrupted; inspect the command before retrying.
-
-Restore destinations must be nonexistent directories beneath your home with an existing parent. Restore uses `--overwrite never` and `--verify`. Include fields accept Restic patterns; leaving them blank restores the whole snapshot. This is file recovery into a staging folder, not automatic OS replacement or a bootable disk-image restore.
-
-Configuration saves check the loaded revision and source path, validate the proposed content, save the previous contents, and replace the source atomically. The review screen displays both old and proposed content. Ghostty edits retain unrelated lines. Fastfetch edits preserve JSONC comments outside rewritten properties and retain custom module options; reordering rewrites the modules array. Previews are illustrative rather than a terminal emulator or executable Fastfetch session.
-
-Health checks do not unlock the backup repository. Package updates reflect `pacman -Qu` against the current local database, without a network refresh. Git ahead/behind counts reflect the last fetch. Missing tools and inaccessible data are shown as unavailable.
-
-## Local data
-
-Linux defaults (respecting the platform's configured app directories):
-
-- Preferences: `~/.config/io.helixstack.commandcenter/settings.json` with a previous-version backup.
-- Project groups/profiles: `~/.local/share/io.helixstack.commandcenter/workspace.json`.
-- Activity: `~/.local/share/io.helixstack.commandcenter/activity.json`.
-- Explicitly saved terminal output: `~/.local/share/io.helixstack.commandcenter/toolbox-output-<timestamp>.txt` (owner-only).
-- Configuration backups: `~/.local/share/io.helixstack.commandcenter/config-backups/`.
-
-Activity and configuration backups are written with owner-only permissions. They remain local and can include command output or configuration content. There is no telemetry or cloud service.
-
-## Development checks
+With a supported Node.js version and npm installed:
 
 ```bash
-npm run check
-npm test
-npm run test:rust
-npm run build
+git clone https://github.com/Commanderx-code/command-center.git
+cd command-center
+npm ci
+npm run dev
 ```
 
-The JavaScript suite covers preference migration, project filters, configuration editing, backup result parsing, and UI flows through a simulated desktop bridge. Rust tests exercise real temporary Git remotes, fast-forward/divergence behavior, a temporary encrypted Restic backup and selective restore (when Restic is installed), process cancellation/timeouts, Unicode output, private atomic persistence, configuration backup/conflict handling, shared catalog completeness, compatibility rejection, and real PTY input/resizing/cancellation. Tests do not push your real repositories, run your real backups, or activate Home Manager.
+Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop operations require Rust and the Linux system dependencies listed in the [installation guide](docs/installation.md). See [Development](docs/development.md) for checks, architecture, and packaging.
 
-The application runs as the normal user. Toolbox scripts retain their own privilege checks and confirmations for package, disk, system, and account changes. Do not launch the entire app with sudo. Tests use temporary commands; they do not execute real Toolbox installers.
+## Documentation
 
-References: [Home Manager standalone flakes](https://nix-community.github.io/home-manager/nix-flakes/standalone.html), [Ghostty configuration](https://ghostty.org/docs/config), and the locally installed `restic restore --help` / `restic ls --help` interfaces.
+- [Installation](docs/installation.md) — packages, requirements, checksums, and source builds.
+- [User guide](docs/user-guide.md) — features, integrations, command behavior, and local data.
+- [Development](docs/development.md) — repository layout, checks, and Toolbox updates.
+- [Changelog](CHANGELOG.md) — release highlights.
+- [Contributing](CONTRIBUTING.md) — bug reports, feature requests, and pull requests.
+- [Third-party notices](THIRD_PARTY.md) — bundled components and their notices.
+
+## Built with
+
+[Tauri](https://github.com/tauri-apps/tauri) provides the desktop shell, Rust handles local system operations, and JavaScript renders the interface. The Toolbox catalog and scripts come from [Commander Toolbox](https://github.com/Commanderx-code/commander-toolbox), built on Linutil. [xterm.js](https://github.com/xtermjs/xterm.js) and [portable-pty](https://github.com/wezterm/wezterm) power the embedded terminal.

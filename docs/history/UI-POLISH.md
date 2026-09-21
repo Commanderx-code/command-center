@@ -1,3 +1,5 @@
+> Historical development notes. These describe an earlier version and may no longer match the app. See the [current user guide](../user-guide.md) for supported behavior.
+
 # Settings and UI polish
 
 This update builds on the persistent-settings version of Command Center.
