@@ -15,6 +15,12 @@ pub struct Settings {
     pub refresh_seconds: u32,
     pub scan_depth: usize,
     pub roots: Vec<String>,
+    pub theme: String,
+    pub text_size: String,
+    pub repo_layout: String,
+    pub repo_sort: String,
+    pub show_paths: bool,
+    pub show_hero: bool,
 }
 
 impl Default for Settings {
@@ -23,6 +29,8 @@ impl Default for Settings {
             display_name: "Commander".into(), editor: "auto".into(), terminal: "auto".into(),
             accent: "cyan".into(), density: "comfortable".into(), reduced_motion: false,
             startup_page: "dashboard".into(), refresh_seconds: 0, scan_depth: 3,
+            theme: "dark".into(), text_size: "normal".into(), repo_layout: "cards".into(),
+            repo_sort: "name".into(), show_paths: true, show_hero: true,
             roots: vec!["~/github/projects".into(), "~/dotfiles".into()],
         }
     }
@@ -36,6 +44,12 @@ impl Settings {
         if !["dashboard", "repositories", "settings"].contains(&self.startup_page.as_str()) { return Err("Invalid startup page".into()); }
         if ![0, 30, 60, 300].contains(&self.refresh_seconds) || !(1..=6).contains(&self.scan_depth) { return Err("Invalid scan settings".into()); }
         if self.roots.len() > 32 || self.roots.iter().any(|r| r.len() > 4096 || r.contains('\0') || !(r == "~" || r.starts_with("~/") || r.starts_with('/'))) { return Err("Use up to 32 absolute or ~/ scan folders".into()); }
+        if !["dark", "light", "system"].contains(&self.theme.as_str())
+            || !["normal", "large"].contains(&self.text_size.as_str())
+            || !["cards", "list"].contains(&self.repo_layout.as_str())
+            || !["name", "name-desc", "attention"].contains(&self.repo_sort.as_str()) {
+            return Err("Invalid display preferences".into());
+        }
         Ok(())
     }
 }
@@ -70,6 +84,14 @@ pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn older_preferences_receive_new_defaults() {
+        let settings: Settings = serde_json::from_str(r#"{"displayName":"Matt","editor":"kate","roots":["~/projects"]}"#).unwrap();
+        assert_eq!(settings.theme, "dark");
+        assert!(settings.show_paths);
+        assert_eq!(settings.editor, "kate");
+        assert!(settings.validate().is_ok());
+    }
     #[test]
     fn validates_launch_and_scan_boundaries() {
         let mut settings = Settings::default();

@@ -39,7 +39,7 @@
           </div>
           <div class="top-actions">
             <button class="icon-button" id="refresh-button" title="Refresh repositories" aria-label="Refresh repositories">↻</button>
-            <button class="primary-button" id="quick-action-button"><span>+</span> Quick action</button>
+            <button class="primary-button" id="quick-action-button"><span>⌂</span> Dashboard</button>
           </div>
         </header>
 
@@ -84,32 +84,41 @@
 
         <section id="repositories-view" class="view">
           <div class="toolbar panel">
-            <label class="search-box"><span>⌕</span><input id="repo-search" type="search" placeholder="Search repositories…" /></label>
+            <label class="search-box"><span>⌕</span><input aria-label="Search repositories" id="repo-search" type="search" placeholder="Search repositories…" /></label>
             <select id="repo-filter" aria-label="Filter repositories"><option value="all">All repositories</option><option value="dirty">Needs attention</option><option value="clean">Clean</option><option value="ahead">Ahead of remote</option><option value="behind">Behind remote</option></select>
+            <select id="repo-sort" aria-label="Sort repositories"><option value="name">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="attention">Needs attention first</option></select>
             <button class="secondary-button" id="add-root-button">+ Add scan folder</button>
           </div>
+          <div class="repo-summary"><p id="repo-results" role="status"></p><p id="repo-freshness">Waiting for first scan…</p></div>
           <div id="repository-grid" class="repository-grid"></div>
         </section>
 
         <section id="settings-view" class="view">
           <form id="preferences-form">
-            <div class="settings-intro"><div><p class="eyebrow">Make it yours</p><h2>A workspace that fits you.</h2><p>Your preferences stay on this device. Changes take effect when you save.</p></div><span class="version-badge">Early access · 0.1</span></div>
+            <div class="settings-intro"><div><p class="eyebrow">Make it yours</p><h2>A workspace that fits you.</h2><p>Appearance previews as you edit. Save to keep your changes on this device.</p></div><span class="version-badge">Early access · 0.1</span></div>
+            <nav class="settings-links" aria-label="Settings sections"><a href="#section-general">General</a><a href="#section-applications">Applications</a><a href="#section-appearance">Appearance</a><a href="#section-repositories">Repositories</a></nav>
             <div class="settings-layout">
-              <section class="panel settings-section"><div class="section-title"><span>01</span><div><h3>General</h3><p>A familiar welcome and a useful starting point.</p></div></div>
+              <section id="section-general" class="panel settings-section"><div class="section-title"><span>01</span><div><h3>General</h3><p>A familiar welcome and a useful starting point.</p></div></div>
                 <label class="setting-row" for="pref-name"><span>Display name<small>Shown in your greeting and profile.</small></span><input id="pref-name" maxlength="40" required autocomplete="off"></label>
                 <label class="setting-row" for="pref-startup"><span>Start page<small>Where Command Center opens.</small></span><select id="pref-startup"><option value="dashboard">Dashboard</option><option value="repositories">Repositories</option><option value="settings">Settings</option></select></label>
               </section>
-              <section class="panel settings-section"><div class="section-title"><span>02</span><div><h3>Applications</h3><p>Use your defaults or choose an app for Command Center.</p></div></div>
+              <section id="section-applications" class="panel settings-section"><div class="section-title"><span>02</span><div><h3>Applications</h3><p>Use your defaults or choose an app for Command Center.</p></div></div>
                 <label class="setting-row" for="pref-editor"><span>Editor<small>Neovim opens inside your selected terminal.</small></span><select id="pref-editor"><option value="auto">System default</option><option value="kate">Kate</option><option value="nvim">Neovim</option><option value="code">VS Code</option><option value="codium">VSCodium</option><option value="zed">Zed</option></select></label>
                 <label class="setting-row" for="pref-terminal"><span>Terminal<small>Opens in the repository folder.</small></span><select id="pref-terminal"><option value="auto">System default</option><option value="ghostty">Ghostty</option><option value="konsole">Konsole</option><option value="gnome-terminal">GNOME Terminal</option><option value="kitty">Kitty</option><option value="alacritty">Alacritty</option><option value="wezterm">WezTerm</option><option value="foot">Foot</option></select></label>
                 <p class="settings-help">System default respects VISUAL / EDITOR and TERMINAL, then desktop preferences. Listed apps must already be installed. These choices affect only Command Center.</p>
               </section>
-              <section class="panel settings-section"><div class="section-title"><span>03</span><div><h3>Appearance</h3><p>Small adjustments, a calmer workspace.</p></div></div>
+              <section id="section-appearance" class="panel settings-section"><div class="section-title"><span>03</span><div><h3>Appearance</h3><p>Small adjustments, a calmer workspace.</p></div></div>
+                <label class="setting-row" for="pref-theme"><span>Theme<small>System follows your desktop’s light or dark preference.</small></span><select id="pref-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></label>
+                <label class="setting-row" for="pref-text-size"><span>Text size</span><select id="pref-text-size"><option value="normal">Standard</option><option value="large">Larger</option></select></label>
+                <label class="setting-row" for="pref-hero"><span>Dashboard welcome banner</span><input id="pref-hero" type="checkbox" role="switch"></label>
                 <label class="setting-row" for="pref-accent"><span>Accent color</span><select id="pref-accent"><option value="cyan">Glacier · Cyan</option><option value="violet">Dusk · Violet</option><option value="green">Mint · Green</option></select></label>
                 <label class="setting-row" for="pref-density"><span>Repository density</span><select id="pref-density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
                 <label class="setting-row" for="pref-motion"><span>Reduce motion<small>Disable decorative animation. Your system motion preference is also respected.</small></span><input id="pref-motion" type="checkbox" role="switch"></label>
               </section>
-              <section class="panel settings-section"><div class="section-title"><span>04</span><div><h3>Repositories</h3><p>Control where and how often we look.</p></div></div>
+              <section id="section-repositories" class="panel settings-section"><div class="section-title"><span>04</span><div><h3>Repositories</h3><p>Control where and how often we look.</p></div></div>
+                <label class="setting-row" for="pref-layout"><span>Repository layout</span><select id="pref-layout"><option value="cards">Cards</option><option value="list">List</option></select></label>
+                <label class="setting-row" for="pref-sort"><span>Default sort<small>The toolbar can change sorting for this session.</small></span><select id="pref-sort"><option value="name">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="attention">Needs attention first</option></select></label>
+                <label class="setting-row" for="pref-paths"><span>Show repository paths</span><input id="pref-paths" type="checkbox" role="switch"></label>
                 <label class="setting-row" for="pref-depth"><span>Scan depth<small>Folder levels beneath each scan root.</small></span><select id="pref-depth"><option value="1">1 level</option><option value="2">2 levels</option><option value="3">3 levels</option><option value="4">4 levels</option><option value="5">5 levels</option><option value="6">6 levels</option></select></label>
                 <label class="setting-row" for="pref-refresh"><span>Automatic refresh<small>While the app is open. Reads local Git state; does not fetch or pull.</small></span><select id="pref-refresh"><option value="0">Manual only</option><option value="30">Every 30 seconds</option><option value="60">Every minute</option><option value="300">Every 5 minutes</option></select></label>
                 <label class="folders-label" for="pref-roots">Scan folders <small>One absolute or ~/ path per line. Clear the list to disable scanning.</small></label><textarea id="pref-roots" rows="4" spellcheck="false" placeholder="~/github/projects"></textarea>
@@ -127,7 +136,7 @@
       </main>
     </div>
 
-    <div id="toast" class="toast" role="status"></div>
+    <div id="toast" class="toast" role="status"><span id="toast-message"></span><button id="dismiss-toast" aria-label="Dismiss notification">×</button></div>
     <script type="module" src="/src/app.js"></script>
   </body>
 </html>

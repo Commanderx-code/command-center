@@ -18,6 +18,8 @@ pub struct Repository {
     behind: usize,
     remote_url: Option<String>,
     last_commit: Option<String>,
+    has_upstream: bool,
+    status_error: bool,
 }
 
 fn expand_home(path: &str) -> Result<PathBuf, String> {
@@ -34,11 +36,14 @@ fn git(path: &Path, args: &[&str]) -> Option<String> {
 }
 
 fn inspect(path: &Path) -> Repository {
-    let status = git(path, &["status", "--porcelain"]).unwrap_or_default();
+    let status_result = git(path, &["status", "--porcelain"]);
+    let status_error = status_result.is_none();
+    let status = status_result.unwrap_or_default();
     let modified_files = status.lines().count();
     let branch = git(path, &["branch", "--show-current"]).unwrap_or_else(|| "detached".into());
     let remote_url = git(path, &["remote", "get-url", "origin"]).filter(|value| !value.is_empty());
     let last_commit = git(path, &["log", "-1", "--format=%s"]).filter(|value| !value.is_empty());
+    let has_upstream = git(path, &["rev-parse", "--verify", "@{upstream}"]).is_some();
     let (ahead, behind) = git(path, &["rev-list", "--left-right", "--count", "HEAD...@{upstream}"])
         .and_then(|value| {
             let mut counts = value.split_whitespace().filter_map(|item| item.parse::<usize>().ok());
@@ -56,6 +61,8 @@ fn inspect(path: &Path) -> Repository {
         behind,
         remote_url,
         last_commit,
+        has_upstream,
+        status_error,
     }
 }
 
