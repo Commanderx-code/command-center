@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Command Center</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>Command Center</strong><small>Commander Workspace</small></div>
+        </div>
+
+        <nav class="main-nav" aria-label="Primary navigation">
+          <button class="nav-item active" data-view="dashboard"><span>⌂</span>Dashboard</button>
+          <button class="nav-item" data-view="repositories"><span>⌘</span>Repositories <em id="repo-count-nav">0</em></button>
+          <button class="nav-item" data-view="sync"><span>↻</span>System Sync</button>
+          <button class="nav-item" data-view="backup"><span>◫</span>Backup & Restore</button>
+          <button class="nav-item" data-view="config"><span>◇</span>Configuration</button>
+          <button class="nav-item" data-view="health"><span>⌁</span>System Health</button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <button class="nav-item" id="settings-button" data-view="settings"><span>⚙</span>Settings</button>
+          <div class="profile"><div class="avatar">CM</div><div><strong>Commander</strong><small>Local workstation</small></div><i class="status-dot"></i></div>
+        </div>
+      </aside>
+
+      <main>
+        <p id="preview-notice" class="preview-notice" hidden>Browser preview · Sample repositories. Desktop scanning and launches require the Tauri app.</p>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Overview</p>
+            <h1 id="view-title">Good evening, Commander.</h1>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" id="refresh-button" title="Refresh repositories" aria-label="Refresh repositories">↻</button>
+            <button class="primary-button" id="quick-action-button"><span>+</span> Quick action</button>
+          </div>
+        </header>
+
+        <section id="dashboard-view" class="view active-view">
+          <div class="hero-panel">
+            <div>
+              <div class="live-label"><span></span>YOUR LOCAL WORKSPACE</div>
+              <h2>Your workstation,<br /><span>under control.</span></h2>
+              <p>Repositories, backups, configuration, and system health—one calm place to manage all of it.</p>
+            </div>
+            <div class="orbit" aria-hidden="true">
+              <div class="orbit-ring ring-one"><i></i></div>
+              <div class="orbit-ring ring-two"><i></i></div>
+              <div class="orbit-core"><span>CC</span><small>LOCAL</small></div>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-icon cyan">⌘</div><div><small>Repositories</small><strong id="repo-total">0</strong><span id="repo-clean">Waiting to scan</span></div></article>
+            <article class="stat-card"><div class="stat-icon violet">↻</div><div><small>Config sync</small><strong>Not connected</strong><span>Home Manager integration planned</span></div></article>
+            <article class="stat-card"><div class="stat-icon green">◫</div><div><small>Last backup</small><strong>—</strong><span>Connect Restic in Phase 2</span></div></article>
+            <article class="stat-card"><div class="stat-icon amber">⌁</div><div><small>System health</small><strong>Not connected</strong><span>Health checks planned</span></div></article>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel repo-panel">
+              <div class="panel-heading"><div><p class="eyebrow">Workspace</p><h3>Repositories</h3></div><button class="text-button" data-go="repositories">View all <span>→</span></button></div>
+              <div id="dashboard-repos" class="repo-list"></div>
+            </section>
+
+            <section class="panel action-panel">
+              <div class="panel-heading"><div><p class="eyebrow">Launchpad</p><h3>Quick actions</h3></div></div>
+              <div class="action-grid">
+                <button data-action="sync"><span class="action-symbol">↻</span><strong>Refresh repos</strong><small>Read local Git status</small></button>
+                <button data-action="backup"><span class="action-symbol">◫</span><strong>Run backup</strong><small>Coming in Phase 2</small></button>
+                <button data-action="home-manager"><span class="action-symbol">⌘</span><strong>Home Manager</strong><small>Coming in Phase 2</small></button>
+                <button data-action="config"><span class="action-symbol">◇</span><strong>Edit configs</strong><small>Ghostty & Fastfetch</small></button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="repositories-view" class="view">
+          <div class="toolbar panel">
+            <label class="search-box"><span>⌕</span><input id="repo-search" type="search" placeholder="Search repositories…" /></label>
+            <select id="repo-filter" aria-label="Filter repositories"><option value="all">All repositories</option><option value="dirty">Needs attention</option><option value="clean">Clean</option><option value="ahead">Ahead of remote</option><option value="behind">Behind remote</option></select>
+            <button class="secondary-button" id="add-root-button">+ Add scan folder</button>
+          </div>
+          <div id="repository-grid" class="repository-grid"></div>
+        </section>
+
+        <section id="settings-view" class="view">
+          <form id="preferences-form">
+            <div class="settings-intro"><div><p class="eyebrow">Make it yours</p><h2>A workspace that fits you.</h2><p>Your preferences stay on this device. Changes take effect when you save.</p></div><span class="version-badge">Early access · 0.1</span></div>
+            <div class="settings-layout">
+              <section class="panel settings-section"><div class="section-title"><span>01</span><div><h3>General</h3><p>A familiar welcome and a useful starting point.</p></div></div>
+                <label class="setting-row" for="pref-name"><span>Display name<small>Shown in your greeting and profile.</small></span><input id="pref-name" maxlength="40" required autocomplete="off"></label>
+                <label class="setting-row" for="pref-startup"><span>Start page<small>Where Command Center opens.</small></span><select id="pref-startup"><option value="dashboard">Dashboard</option><option value="repositories">Repositories</option><option value="settings">Settings</option></select></label>
+              </section>
+              <section class="panel settings-section"><div class="section-title"><span>02</span><div><h3>Applications</h3><p>Use your defaults or choose an app for Command Center.</p></div></div>
+                <label class="setting-row" for="pref-editor"><span>Editor<small>Neovim opens inside your selected terminal.</small></span><select id="pref-editor"><option value="auto">System default</option><option value="kate">Kate</option><option value="nvim">Neovim</option><option value="code">VS Code</option><option value="codium">VSCodium</option><option value="zed">Zed</option></select></label>
+                <label class="setting-row" for="pref-terminal"><span>Terminal<small>Opens in the repository folder.</small></span><select id="pref-terminal"><option value="auto">System default</option><option value="ghostty">Ghostty</option><option value="konsole">Konsole</option><option value="gnome-terminal">GNOME Terminal</option><option value="kitty">Kitty</option><option value="alacritty">Alacritty</option><option value="wezterm">WezTerm</option><option value="foot">Foot</option></select></label>
+                <p class="settings-help">System default respects VISUAL / EDITOR and TERMINAL, then desktop preferences. Listed apps must already be installed. These choices affect only Command Center.</p>
+              </section>
+              <section class="panel settings-section"><div class="section-title"><span>03</span><div><h3>Appearance</h3><p>Small adjustments, a calmer workspace.</p></div></div>
+                <label class="setting-row" for="pref-accent"><span>Accent color</span><select id="pref-accent"><option value="cyan">Glacier · Cyan</option><option value="violet">Dusk · Violet</option><option value="green">Mint · Green</option></select></label>
+                <label class="setting-row" for="pref-density"><span>Repository density</span><select id="pref-density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+                <label class="setting-row" for="pref-motion"><span>Reduce motion<small>Disable decorative animation. Your system motion preference is also respected.</small></span><input id="pref-motion" type="checkbox" role="switch"></label>
+              </section>
+              <section class="panel settings-section"><div class="section-title"><span>04</span><div><h3>Repositories</h3><p>Control where and how often we look.</p></div></div>
+                <label class="setting-row" for="pref-depth"><span>Scan depth<small>Folder levels beneath each scan root.</small></span><select id="pref-depth"><option value="1">1 level</option><option value="2">2 levels</option><option value="3">3 levels</option><option value="4">4 levels</option><option value="5">5 levels</option><option value="6">6 levels</option></select></label>
+                <label class="setting-row" for="pref-refresh"><span>Automatic refresh<small>While the app is open. Reads local Git state; does not fetch or pull.</small></span><select id="pref-refresh"><option value="0">Manual only</option><option value="30">Every 30 seconds</option><option value="60">Every minute</option><option value="300">Every 5 minutes</option></select></label>
+                <label class="folders-label" for="pref-roots">Scan folders <small>One absolute or ~/ path per line. Clear the list to disable scanning.</small></label><textarea id="pref-roots" rows="4" spellcheck="false" placeholder="~/github/projects"></textarea>
+                <p class="settings-help">Folders that resolve to the same location appear once. Missing folders are skipped; build and dependency folders are excluded from traversal.</p>
+              </section>
+            </div>
+            <div class="settings-footer"><p id="settings-status" role="status">Loading preferences…</p><div><button type="button" class="text-button" id="reset-preferences">Reset to defaults</button><button type="button" class="secondary-button" id="discard-preferences">Discard changes</button><button type="submit" class="primary-button" id="save-preferences">Save settings</button></div></div>
+            <p id="scan-status" class="settings-help" role="status"></p>
+          </form>
+        </section>
+
+        <section id="placeholder-view" class="view">
+          <div class="placeholder panel"><div class="placeholder-icon">◇</div><p class="eyebrow">Roadmap</p><h2 id="placeholder-title">Module coming next</h2><p id="placeholder-copy">The foundation is ready. This module will be connected in the next phase.</p><button class="secondary-button" data-go="dashboard">Return to dashboard</button></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

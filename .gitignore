@@ -1,0 +1,9 @@
+node_modules/
+src-tauri/target/
+dist/
+*.log
+
+# Local update backups
+.command-center-backups/
+*.before-ghostty-fix
+__pycache__/
