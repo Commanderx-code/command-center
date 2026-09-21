@@ -1,3 +1,4 @@
+import { createToolbox } from "./toolbox.js";
 import { normalizeIntegrations, integrationDefaults } from "./preferences.js";
 import {
   ghosttyFields,
@@ -225,6 +226,8 @@ export function createFeatures(api) {
     toast(`${plan.title} started`);
     if (!callback) switchView("activity");
     await poll();
+    if (plan.interactive && !plan.externalTerminal) toolbox.started(id, plan);
+    return id;
   }
   function bind() {
     document.addEventListener(
@@ -576,6 +579,7 @@ export function createFeatures(api) {
     }
   }
   function renderActivity() {
+    toolbox.updateJobs(jobs);
     $("#activity-count").textContent = String(
       jobs.filter((j) => j.status === "running").length,
     );
@@ -602,7 +606,16 @@ export function createFeatures(api) {
       previous.scrollTop + previous.clientHeight >= previous.scrollHeight - 50;
     const scroll = previous?.scrollTop || 0;
     $("#job-detail").innerHTML =
-      `<div class="panel-heading"><h3>${e(job.title)}</h3><span class="status-badge ${job.status === "succeeded" ? "success" : "warning"}">${e(job.status)}</span></div><p class="settings-help">${e(age(job.startedAt))}${job.finishedAt ? " → " + e(age(job.finishedAt)) : ""} · Exit ${job.exitCode ?? "—"}</p><p class="path-label">${e(job.cwd)}</p><pre class="command-line">${e(job.command)}</pre>${job.externalTerminal ? '<p class="settings-help">This workflow uses your terminal. Private input and output are not recorded here.</p>' : ""}<pre id="job-output" class="output live-output" tabindex="0" aria-label="Job output">${e(cleanOutput(job.output) || "Waiting for output…")}</pre>${job.truncated ? '<p class="error-text">Output reached the 2 MB limit. Remaining output was omitted.</p>' : ""}<div class="button-row">${job.status === "running" && !job.externalTerminal ? button("Stop job", 'id="cancel-job"') : ""}${job.status === "running" && job.externalTerminal ? button("Terminal closed? Stop monitoring", 'id="stop-terminal-monitor"') : ""}${!["running", "succeeded"].includes(job.status) && !job.acknowledged ? button("Mark reviewed", 'id="acknowledge-job"') : ""}</div>`;
+      `<div class="panel-heading"><h3>${e(job.title)}</h3><span class="status-badge ${job.status === "succeeded" ? "success" : "warning"}">${e(job.status)}</span></div><p class="settings-help">${e(age(job.startedAt))}${job.finishedAt ? " → " + e(age(job.finishedAt)) : ""} · Exit ${job.exitCode ?? "—"}</p><p class="path-label">${e(job.cwd)}</p><pre class="command-line">${e(job.command)}</pre>${job.externalTerminal ? '<p class="settings-help">This workflow uses your terminal. Private input and output are not recorded here.</p>' : ""}<pre id="job-output" class="output live-output" tabindex="0" aria-label="Job output">${e(cleanOutput(job.output) || (job.interactive ? "Open the terminal for live input and output." : "Waiting for output…"))}</pre>${job.truncated ? '<p class="error-text">Output reached the 2 MB limit. Remaining output was omitted.</p>' : ""}<div class="button-row">${job.status === "running" && !job.externalTerminal ? button("Stop job", 'id="cancel-job"') : ""}${job.status === "running" && job.externalTerminal ? button("Terminal closed? Stop monitoring", 'id="stop-terminal-monitor"') : ""}${!["running", "succeeded"].includes(job.status) && !job.acknowledged ? button("Mark reviewed", 'id="acknowledge-job"') : ""}</div>`;
+    if (job.interactive && !job.externalTerminal) {
+      $("#job-output").insertAdjacentHTML(
+        "beforebegin",
+        '<button type="button" class="primary-button" id="open-job-terminal">Open interactive terminal</button><p class="settings-help">Interactive output is held in memory only. Activity stores the command and result.</p>',
+      );
+      $("#open-job-terminal").addEventListener("click", () =>
+        toolbox.openTerminal(job),
+      );
+    }
     $("#job-output").scrollTop = stick ? $("#job-output").scrollHeight : scroll;
     $("#cancel-job")?.addEventListener(
       "click",
@@ -626,7 +639,7 @@ export function createFeatures(api) {
         if (
           await review(
             "Stop monitoring this terminal?",
-            "This does not stop a running backup. Only continue if you have closed or stopped the workflow in its terminal.",
+            "This does not stop a running workflow. Only continue if you have closed or stopped the workflow in its terminal.",
             job.title,
             "Stop monitoring",
           )
@@ -1043,12 +1056,14 @@ export function createFeatures(api) {
     setInterval(() => void poll(), 1500);
   }
   function onView(view) {
+    toolbox.onView(view);
     if (view === "sync") void refreshSync();
     if (view === "config" && !configDocument) void loadConfig();
     if (view === "activity") renderActivity();
     if (view === "attention") renderAttention();
   }
   mount();
+  const toolbox = createToolbox({ ...api, run, guard, review, action });
   return {
     initialize,
     onView,

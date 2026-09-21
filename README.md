@@ -1,12 +1,15 @@
 # Command Center
 
-A local Linux workstation dashboard built with Tauri, Rust, and JavaScript. Version 0.2 connects repository management, Home Manager, existing backup helpers, Ghostty/Fastfetch configuration, and system health.
+A local Linux workstation dashboard built with Tauri, Rust, and JavaScript. Version 0.3 adds the full Commander Toolbox catalog and an interactive terminal alongside repository management, Home Manager, backups, configuration, and system health.
 
 ## What works
 
+- **Toolbox:** all 215 bundled actions across Applications Setup, Gaming, Security, System Setup, and Utilities. Search descriptions and groups, filter by category or availability, keep favorites, and choose Myfish, dotfiles, or application setups through graphical selectors. Run one reviewed action at a time in the embedded terminal or your preferred external terminal.
+- **Interactive terminal:** real PTY input, password prompts, ANSI menus, resizing, cancellation, and exit status. Terminal output stays in a bounded 1 MB memory buffer and is never written to Activity. Save output explicitly if you need a private local transcript. The embedded terminal supports text/ANSI; use an external terminal for image graphics.
+
 - **Repositories:** scan configurable roots, inspect branches and local changes, search/filter/sort, favorites, groups, changed-file lists, recent commits, and editor/terminal/remote launchers. Fetch updates remote-tracking information; pull requires a clean tracked branch and uses fast-forward only; push targets that branch's upstream without force or automatic tags.
 - **Launch profiles:** save a documentation URL and choose whether a project opens its editor, terminal, and documentation together.
-- **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Only one operation runs at a time. Output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
+- **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Only one operation runs at a time. Background output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
 - **System Sync:** inspect dotfiles changes, compare Ghostty/Fastfetch sources with their live files, view Home Manager generations, fetch/pull the config repository, build, and apply Home Manager.
 - **Backup & Restore:** run your personal backup helper, run the full recovery helper in a terminal for encryption prompts, load recent Restic snapshots, browse directories, check repository metadata, and restore a snapshot or selected path/pattern into a new folder beneath your home directory.
 - **Configuration:** Ghostty font, theme, padding, opacity, and cursor controls; Fastfetch logo/separator controls and module add/remove/reordering. Both include a source editor and illustrative preview. Ghostty uses its installed validator. Fastfetch validates JSONC syntax and module structure; it does not execute command modules or claim full runtime/schema validation.
@@ -53,9 +56,17 @@ On the first desktop launch without a configured dotfiles integration, Command C
 - **Configuration sources** must be editable files inside your home. Files resolving into `/nix/store` are never modified. For the existing dotfiles layout, a Home Manager-managed Fastfetch config maps to `configs/fastfetch/config.jsonc`. Other layouts can be set manually. Save the source, then build/apply Home Manager to activate it.
 - **Recovery instructions** can point to a dedicated recovery document. Detection falls back to the dotfiles README if no recovery-specific file is found; review that choice.
 
+## Toolbox integration
+
+The desktop links directly to `linutil_core` from Commander Toolbox at commit `880b79c26bd475af018d98ae7dea5d206a0b211d`. Its embedded script tree, relative imports, interpreter selection, and preconditions remain shared with the TUI. A worker owns the extracted tree for the lifetime of the app. Compatibility is checked again during review and immediately before execution. There is no runtime download of the catalog; individual scripts can download their normal dependencies.
+
+Use **Toolbox → Quick setup** to select a Myfish shell, dotfiles configuration, or application, then **Review & run**. Installer-specific choices and confirmations remain in the original script. **Run tools in** selects the embedded terminal or the external terminal configured in Settings. Return to a session from **Terminal** or its Activity entry. Only the latest session buffer remains available; it is lost on app exit. External terminal output stays external.
+
+Future catalog updates require updating the pinned revision in `src-tauri/Cargo.toml` and `src-tauri/src/toolbox.rs`, refreshing Cargo.lock, running the checks below, and rebuilding. No sibling checkout is needed to build or run Command Center. Toolbox favorites are stored in the webview’s local storage. Activity records the action ID and bundled revision, but no terminal input or transcript.
+
 ## Operational behavior
 
-Every operation displays its exact command and working directory for review. Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
+Every operation displays its exact command and working directory for review. Repository Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
 
 Background jobs show output and a recorded exit status. Full recovery backups use a terminal and write a completion receipt back to the app; terminal input/output is not captured. If the terminal closes without a receipt, use **Terminal closed? Stop monitoring** only after checking that the workflow has stopped. Closing the app normally is blocked while a job is running. After a crash, previously running jobs are marked interrupted; inspect the command before retrying.
 
@@ -72,6 +83,7 @@ Linux defaults (respecting the platform's configured app directories):
 - Preferences: `~/.config/io.helixstack.commandcenter/settings.json` with a previous-version backup.
 - Project groups/profiles: `~/.local/share/io.helixstack.commandcenter/workspace.json`.
 - Activity: `~/.local/share/io.helixstack.commandcenter/activity.json`.
+- Explicitly saved terminal output: `~/.local/share/io.helixstack.commandcenter/toolbox-output-<timestamp>.txt` (owner-only).
 - Configuration backups: `~/.local/share/io.helixstack.commandcenter/config-backups/`.
 
 Activity and configuration backups are written with owner-only permissions. They remain local and can include command output or configuration content. There is no telemetry or cloud service.
@@ -85,8 +97,8 @@ npm run test:rust
 npm run build
 ```
 
-The JavaScript suite covers preference migration, project filters, configuration editing, backup result parsing, and UI flows through a simulated desktop bridge. Rust tests exercise real temporary Git remotes, fast-forward/divergence behavior, a temporary encrypted Restic backup and selective restore (when Restic is installed), process cancellation/timeouts, Unicode output, private atomic persistence, and configuration backup/conflict handling. Tests do not push your real repositories, run your real backups, or activate Home Manager.
+The JavaScript suite covers preference migration, project filters, configuration editing, backup result parsing, and UI flows through a simulated desktop bridge. Rust tests exercise real temporary Git remotes, fast-forward/divergence behavior, a temporary encrypted Restic backup and selective restore (when Restic is installed), process cancellation/timeouts, Unicode output, private atomic persistence, configuration backup/conflict handling, shared catalog completeness, compatibility rejection, and real PTY input/resizing/cancellation. Tests do not push your real repositories, run your real backups, or activate Home Manager.
 
-The application runs as the normal user. Privileged OS installation, package upgrades, disk formatting, and bootloader recovery are outside this release.
+The application runs as the normal user. Toolbox scripts retain their own privilege checks and confirmations for package, disk, system, and account changes. Do not launch the entire app with sudo. Tests use temporary commands; they do not execute real Toolbox installers.
 
 References: [Home Manager standalone flakes](https://nix-community.github.io/home-manager/nix-flakes/standalone.html), [Ghostty configuration](https://ghostty.org/docs/config), and the locally installed `restic restore --help` / `restic ls --help` interfaces.

@@ -20,6 +20,10 @@ const OUTPUT_LIMIT: usize = 2_000_000;
 pub struct Job {
     pub id: String,
     pub action: String,
+    #[serde(default)]
+    pub tool_id: String,
+    #[serde(default)]
+    pub toolbox_revision: String,
     pub title: String,
     pub command: String,
     pub cwd: String,
@@ -32,6 +36,8 @@ pub struct Job {
     pub exit_code: Option<i32>,
     pub truncated: bool,
     pub external_terminal: bool,
+    #[serde(default)]
+    pub interactive: bool,
     pub acknowledged: bool,
 }
 #[derive(Default)]
@@ -102,7 +108,7 @@ pub fn job_history(
 pub async fn prepare_job(app: tauri::AppHandle, request: Request) -> Result<Plan, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let s = crate::settings::load_settings(app.clone())?.unwrap_or_default();
-        let mut plan = integrations::build_plan(&request, &s)?;
+        let mut plan = build_plan(&app, &request, &s)?;
         let jobs = app.state::<Jobs>();
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
         initialize(&app, &mut state)?;
@@ -142,7 +148,7 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
         drop(state);
         // Recheck mutable preconditions off the UI thread without holding the activity lock.
         let settings = crate::settings::load_settings(app.clone())?.unwrap_or_default();
-        let current = integrations::build_plan(&request, &settings)?;
+        let current = build_plan(&app, &request, &settings)?;
         if current.args != plan.args || current.program != plan.program || current.cwd != plan.cwd {
             return Err("Settings changed; review the action again".into());
         }
@@ -162,6 +168,12 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
             0,
             Job {
                 id: id.clone(),
+                tool_id: request.tool_id,
+                toolbox_revision: if request.action == "toolbox" {
+                    crate::toolbox::REVISION.into()
+                } else {
+                    String::new()
+                },
                 action: request.action,
                 title: plan.title.clone(),
                 command,
@@ -174,6 +186,7 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
                 exit_code: None,
                 truncated: false,
                 external_terminal: plan.external_terminal,
+                interactive: plan.interactive,
                 acknowledged: false,
             },
         );
@@ -186,6 +199,21 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
     })
     .await
     .map_err(|e| e.to_string())?
+}
+fn build_plan(
+    app: &tauri::AppHandle,
+    request: &Request,
+    settings: &crate::settings::Settings,
+) -> Result<Plan, String> {
+    if request.action == "toolbox" {
+        settings.validate()?;
+        app.state::<crate::toolbox::Toolbox>().plan(request)
+    } else {
+        integrations::build_plan(request, settings)
+    }
+}
+pub(crate) fn cancelled(jobs: &Jobs) -> bool {
+    jobs.0.lock().map(|s| s.cancel).unwrap_or(true)
 }
 fn append(jobs: &Jobs, id: &str, text: &str) {
     if let Ok(mut state) = jobs.0.lock() {
@@ -293,7 +321,7 @@ fn run(app: tauri::AppHandle, jobs: Jobs, plan: Plan, id: String, terminal: Stri
         match result {
             Err(e) => finish(&app, &jobs, &id, "failed", None, &e),
             Ok(receipt) => {
-                append(&jobs,&id,"Opened your terminal for interactive backup. Output and encryption prompts stay in that terminal.\n");
+                append(&jobs,&id,"Opened your terminal for this interactive workflow. Input and output stay in that terminal.\n");
                 let start = Instant::now();
                 loop {
                     if let Ok(text) = fs::read_to_string(&receipt) {
@@ -340,7 +368,16 @@ fn run(app: tauri::AppHandle, jobs: Jobs, plan: Plan, id: String, terminal: Stri
         }
         return;
     }
-    let (status, code, message) = run_process(jobs.clone(), plan, id.clone());
+    let (status, code, message) = if plan.interactive {
+        crate::terminal::run(
+            &app.state::<crate::terminal::Terminals>(),
+            &jobs,
+            &plan,
+            &id,
+        )
+    } else {
+        run_process(jobs.clone(), plan, id.clone())
+    };
     finish(&app, &jobs, &id, &status, code, &message);
 }
 fn run_process(jobs: Jobs, plan: Plan, id: String) -> (String, Option<i32>, String) {
@@ -475,7 +512,7 @@ pub fn stop_terminal_monitor(
             return Err("No terminal workflow is being monitored".into());
         }
     }
-    finish(&app, &jobs, &id, "interrupted", None, "\nMonitoring stopped by user. Completion was not verified; check the terminal before running another backup.\n");
+    finish(&app, &jobs, &id, "interrupted", None, "\nMonitoring stopped by user. Completion was not verified; check the terminal before running another workflow.\n");
     Ok(())
 }
 pub fn prevent_close(app: &tauri::AppHandle) -> bool {
@@ -497,6 +534,8 @@ mod tests {
         jobs.0.lock().unwrap().jobs.push(Job {
             id: "fixture".into(),
             action: "snapshots".into(),
+            tool_id: String::new(),
+            toolbox_revision: String::new(),
             title: "Fixture".into(),
             command: String::new(),
             cwd: "/tmp".into(),
@@ -508,6 +547,7 @@ mod tests {
             exit_code: None,
             truncated: false,
             external_terminal: false,
+            interactive: false,
             acknowledged: false,
         });
         jobs
@@ -522,6 +562,7 @@ mod tests {
             explanation: String::new(),
             timeout_seconds: 10,
             external_terminal: false,
+            interactive: false,
             create_target: None,
         }
     }

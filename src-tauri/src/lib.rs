@@ -7,6 +7,8 @@ mod launcher;
 mod platform;
 mod repositories;
 mod settings;
+mod terminal;
+mod toolbox;
 mod workspace;
 
 use repositories::{discover_repositories, open_repository};
@@ -16,6 +18,8 @@ pub fn run() {
     platform::initialize_path();
     tauri::Builder::default()
         .manage(jobs::Jobs::default())
+        .manage(toolbox::Toolbox::default())
+        .manage(terminal::Terminals::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if jobs::prevent_close(window.app_handle()) {
@@ -34,6 +38,11 @@ pub fn run() {
             workspace::launch_project,
             integrations::detect_integrations,
             integrations::sync_status,
+            toolbox::toolbox_catalog,
+            terminal::terminal_read,
+            terminal::terminal_write,
+            terminal::terminal_resize,
+            terminal::terminal_export,
             jobs::job_history,
             jobs::job_result,
             jobs::stop_terminal_monitor,

@@ -76,6 +76,8 @@ async function setup(overrides = {}) {
   });
   const w = dom.window;
   w.matchMedia = () => ({ matches: false, addEventListener() {} });
+  // xterm probes canvas when imported; terminal rendering is covered in the browser.
+  w.HTMLCanvasElement.prototype.getContext = () => null;
   w.setInterval = () => 0;
   w.HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
@@ -207,17 +209,141 @@ test("backend failures remain visible and do not mark a job as started", async (
   }
 });
 
-test('snapshot results load through the result endpoint after a completed job', async () => {
-  const x = await setup({job_result: {result:'[{"id":"a1b2c3d4","short_id":"a1b2c3d4","time":"2026-09-20T12:00:00Z","hostname":"fixture","paths":["/fixture"]}]', output:'diagnostic text'}});
+test("snapshot results load through the result endpoint after a completed job", async () => {
+  const x = await setup({
+    job_result: {
+      result:
+        '[{"id":"a1b2c3d4","short_id":"a1b2c3d4","time":"2026-09-20T12:00:00Z","hostname":"fixture","paths":["/fixture"]}]',
+      output: "diagnostic text",
+    },
+  });
   try {
     x.$('[data-view="backup"]').click();
-    x.$('#load-snapshots').click(); await settle();
-    submit(x.w, x.$('#review-form')); await settle();
-    x.responses.job_history = {jobs:[{id:'job-1',title:'Snapshots',status:'succeeded',command:'restic snapshots',cwd:'/fixture',startedAt:Date.now()-1000,finishedAt:Date.now(),exitCode:0,output:''}]};
-    x.$('#activity-refresh').click(); await settle();
-    assert.match(x.$('#snapshots').textContent,/fixture/);
-    x.$('[data-snapshot]').click();
-    assert.equal(x.$('#restore-snapshot').value,'a1b2c3d4');
-    assert.equal(x.calls.some(c=>c.command==='job_result'),true);
-  } finally {x.dom.window.close();}
+    x.$("#load-snapshots").click();
+    await settle();
+    submit(x.w, x.$("#review-form"));
+    await settle();
+    x.responses.job_history = {
+      jobs: [
+        {
+          id: "job-1",
+          title: "Snapshots",
+          status: "succeeded",
+          command: "restic snapshots",
+          cwd: "/fixture",
+          startedAt: Date.now() - 1000,
+          finishedAt: Date.now(),
+          exitCode: 0,
+          output: "",
+        },
+      ],
+    };
+    x.$("#activity-refresh").click();
+    await settle();
+    assert.match(x.$("#snapshots").textContent, /fixture/);
+    x.$("[data-snapshot]").click();
+    assert.equal(x.$("#restore-snapshot").value, "a1b2c3d4");
+    assert.equal(
+      x.calls.some((c) => c.command === "job_result"),
+      true,
+    );
+  } finally {
+    x.dom.window.close();
+  }
+});
+
+const toolboxCatalog = {
+  revision: "fixture-revision",
+  actions: [
+    {
+      id: '["Applications Setup","Myfish Shell Setup","Fish"]',
+      name: "Myfish Fish",
+      description: "Native shell setup",
+      category: "Applications Setup",
+      groups: ["Myfish Shell Setup"],
+      available: true,
+      multiSelect: false,
+      taskList: "I FM MP",
+    },
+    {
+      id: "unavailable",
+      name: "Unavailable fixture",
+      description: "Requires another system",
+      category: "Utilities",
+      groups: [],
+      available: false,
+    },
+  ],
+};
+test("Toolbox filters unavailable actions, persists favorites and reviews the catalog ID before launch", async () => {
+  const x = await setup({ toolbox_catalog: toolboxCatalog });
+  try {
+    x.$('[data-view="toolbox"]').click();
+    await settle();
+    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
+    assert.match(x.$("#toolbox-source").textContent, /2 tools.*1 available/);
+    assert.match(
+      x.$("#toolbox-detail").textContent,
+      /Installation.*File changes.*Package manager/,
+    );
+    x.$("#toolbox-favorite").click();
+    assert.equal(
+      JSON.parse(
+        x.w.localStorage.getItem("command-center.toolbox-favorites"),
+      )[0],
+      toolboxCatalog.actions[0].id,
+    );
+    x.$("#toolbox-available").click();
+    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 2);
+    x.$('[data-tool="unavailable"]').click();
+    assert.equal(x.$("#toolbox-run").disabled, true);
+    assert.equal(
+      x.calls.some((c) => c.command === "prepare_job"),
+      false,
+    );
+    x.$("#toolbox-favorites").click();
+    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
+    x.$("#toolbox-terminal").value = "external";
+    x.$("#toolbox-run").click();
+    await settle();
+    const request = x.calls.find((c) => c.command === "prepare_job").args
+      .request;
+    assert.equal(request.action, "toolbox");
+    assert.equal(request.toolId, toolboxCatalog.actions[0].id);
+    assert.equal(request.terminalMode, "external");
+    x.$("#review-cancel").click();
+    await settle();
+    assert.equal(
+      x.calls.some((c) => c.command === "start_job"),
+      false,
+    );
+    x.$("#toolbox-run").click();
+    await settle();
+    submit(x.w, x.$("#review-form"));
+    await settle();
+    assert.equal(
+      x.calls.find((c) => c.command === "start_job").args.id,
+      "review-token",
+    );
+  } finally {
+    x.dom.window.close();
+  }
+});
+test("Toolbox refresh failures remain visible and recover without replacing the catalog with an empty success", async () => {
+  const x = await setup({ toolbox_catalog: new Error("Catalog unavailable") });
+  try {
+    x.$('[data-view="toolbox"]').click();
+    await settle();
+    assert.match(
+      x.$("#toolbox-feedback").textContent,
+      /Could not refresh.*Catalog unavailable/,
+    );
+    assert.equal(x.$("#toolbox-refresh").disabled, false);
+    x.responses.toolbox_catalog = toolboxCatalog;
+    x.$("#toolbox-refresh").click();
+    await settle();
+    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
+  } finally {
+    x.dom.window.close();
+  }
 });

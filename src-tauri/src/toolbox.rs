@@ -44,18 +44,28 @@ fn flatten(tabs: &TabList) -> Vec<Action> {
                     vec!["-e".into(), "-c".into(), command.clone()],
                     crate::platform::home(),
                 ),
-                Command::LocalFile { executable, args, file } => {
+                Command::LocalFile {
+                    executable,
+                    args,
+                    file,
+                } => {
                     let mut args = args.clone();
                     // Core's fallback shebang omits the script argument.
                     if args.last().map(String::as_str) != file.to_str() {
                         args.push(file.to_string_lossy().into_owned());
                     }
-                    (executable.clone(), args, file.parent().unwrap_or(file).to_owned())
+                    (
+                        executable.clone(),
+                        args,
+                        file.parent().unwrap_or(file).to_owned(),
+                    )
                 }
             };
-            let mut groups: Vec<_> = node.ancestors()
+            let mut groups: Vec<_> = node
+                .ancestors()
                 .filter(|n| n.parent().is_some())
-                .map(|n| n.value().name.clone()).collect();
+                .map(|n| n.value().name.clone())
+                .collect();
             groups.reverse();
             let mut key = vec![tab.name.clone()];
             key.extend(groups.clone());
@@ -66,9 +76,14 @@ fn flatten(tabs: &TabList) -> Vec<Action> {
             plan.explanation = format!("{}\n\nRuns the bundled Commander Toolbox script with its existing prompts and privilege checks. Terminal input and output are not saved in Activity.", data.description);
             actions.push(Action {
                 id: serde_json::to_string(&key).unwrap_or_default(),
-                name: data.name.clone(), category: tab.name.clone(), groups,
-                description: data.description.clone(), task_list: data.task_list.clone(),
-                multi_select: data.multi_select, available: false, plan,
+                name: data.name.clone(),
+                category: tab.name.clone(),
+                groups,
+                description: data.description.clone(),
+                task_list: data.task_list.clone(),
+                multi_select: data.multi_select,
+                available: false,
+                plan,
             });
         }
     }
@@ -79,10 +94,20 @@ fn load_tabs(validate: bool) -> Result<TabList, String> {
         .map_err(|_| "Could not load the bundled Toolbox catalog".into())
 }
 fn supported() -> Result<BTreeSet<String>, String> {
-    Ok(flatten(&load_tabs(true)?).into_iter().map(|a| a.id).collect())
+    Ok(flatten(&load_tabs(true)?)
+        .into_iter()
+        .map(|a| a.id)
+        .collect())
 }
-fn checked_plan(actions: &[Action], supported: &BTreeSet<String>, id: &str) -> Result<Plan, String> {
-    let action = actions.iter().find(|a| a.id == id).ok_or("Unknown Toolbox action")?;
+fn checked_plan(
+    actions: &[Action],
+    supported: &BTreeSet<String>,
+    id: &str,
+) -> Result<Plan, String> {
+    let action = actions
+        .iter()
+        .find(|a| a.id == id)
+        .ok_or("Unknown Toolbox action")?;
     if !supported.contains(id) {
         return Err("This action's Toolbox preconditions or interpreter are not available on this machine. Refresh the catalog.".into());
     }
@@ -99,13 +124,20 @@ impl Default for Toolbox {
                     Query::Catalog(reply) => {
                         let result = actions.clone().and_then(|mut actions| {
                             let supported = supported()?;
-                            for action in &mut actions { action.available = supported.contains(&action.id); }
-                            Ok(Catalog { revision: REVISION, actions })
+                            for action in &mut actions {
+                                action.available = supported.contains(&action.id);
+                            }
+                            Ok(Catalog {
+                                revision: REVISION,
+                                actions,
+                            })
                         });
                         let _ = reply.send(result);
                     }
                     Query::Plan(id, reply) => {
-                        let result = actions.as_ref().map_err(Clone::clone)
+                        let result = actions
+                            .as_ref()
+                            .map_err(Clone::clone)
                             .and_then(|actions| checked_plan(actions, &supported()?, &id));
                         let _ = reply.send(result);
                     }
@@ -127,7 +159,9 @@ impl Toolbox {
             return Err("Choose an embedded or external terminal".into());
         }
         let (tx, rx) = mpsc::channel();
-        self.0.send(Query::Plan(request.tool_id.clone(), tx)).map_err(|e| e.to_string())?;
+        self.0
+            .send(Query::Plan(request.tool_id.clone(), tx))
+            .map_err(|e| e.to_string())?;
         let mut plan = rx.recv().map_err(|e| e.to_string())??;
         plan.external_terminal = request.terminal_mode == "external";
         Ok(plan)
@@ -137,7 +171,8 @@ impl Toolbox {
 pub async fn toolbox_catalog(app: tauri::AppHandle) -> Result<Catalog, String> {
     use tauri::Manager;
     tauri::async_runtime::spawn_blocking(move || app.state::<Toolbox>().catalog())
-        .await.map_err(|e| e.to_string())?
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -155,12 +190,22 @@ mod tests {
             assert!(std::path::Path::new(action.plan.args.last().unwrap()).is_file());
         }
         let action = catalog.actions.iter().find(|a| a.available).unwrap();
-        let request = Request { action: "toolbox".into(), tool_id: action.id.clone(), terminal_mode: "embedded".into(), ..Default::default() };
+        let request = Request {
+            action: "toolbox".into(),
+            tool_id: action.id.clone(),
+            terminal_mode: "embedded".into(),
+            ..Default::default()
+        };
         let first = toolbox.plan(&request).unwrap();
         let second = toolbox.plan(&request).unwrap();
         assert_eq!(first.args, second.args);
         assert!(first.interactive && !first.external_terminal);
-        let external = toolbox.plan(&Request { terminal_mode: "external".into(), ..request }).unwrap();
+        let external = toolbox
+            .plan(&Request {
+                terminal_mode: "external".into(),
+                ..request
+            })
+            .unwrap();
         assert!(external.external_terminal);
         assert!(checked_plan(&catalog.actions, &BTreeSet::new(), &action.id).is_err());
         assert!(checked_plan(&catalog.actions, &supported().unwrap(), "../../bad").is_err());

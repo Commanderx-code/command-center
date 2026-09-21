@@ -215,6 +215,34 @@ button:disabled { cursor:default; }
 .integration-field span { font-size:12px; }
 .integration-field small { display:block; font-size:11px; color:var(--muted); line-height:1.5; margin-top:5px; }
 .activity-layout { display:grid; grid-template-columns:minmax(220px, .7fr) minmax(0,1.7fr); gap:18px; }
+.toolbox-intro { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:22px; border-left:3px solid var(--cyan); }
+.toolbox-intro p { color:var(--muted); font-size:12px; margin:10px 0 0; }
+.toolbox-intro label,.toolbox-setup label { display:grid; gap:8px; font-size:11px; color:var(--muted); }
+.toolbox-intro select,.toolbox-setup select,.toolbox-filters input[type=search] { border:1px solid var(--line); border-radius:7px; padding:12px; background:var(--bg); color:inherit; min-width:0; font:inherit; }
+.toolbox-setup { margin:18px 0; padding:18px 22px; }
+.toolbox-setup summary { cursor:pointer; font-size:13px; }.toolbox-setup summary span { color:var(--muted); margin-left:12px; font-size:11px; }
+.toolbox-setup form { display:grid; grid-template-columns:1fr 2fr auto; gap:18px; align-items:end; margin-top:22px; }
+.toolbox-filters { display:flex; align-items:center; gap:14px; margin:24px 0 18px; }
+.toolbox-filters input[type=search] { flex:1; font-size:12px; }
+.toolbox-filters label { font-size:11px; color:var(--muted); display:flex; gap:7px; align-items:center; }
+.toolbox-filters input[type=checkbox] { accent-color:var(--cyan); }
+.toolbox-categories { display:flex; flex-wrap:wrap; gap:8px; }
+.toolbox-categories button { border:1px solid var(--line); border-radius:7px; background:transparent; color:var(--muted); padding:9px 12px; cursor:pointer; font-size:11px; }
+.toolbox-categories button span { opacity:.65; margin-left:7px; }
+.toolbox-categories button[aria-pressed=true],#toolbox-favorites[aria-pressed=true] { border-color:var(--cyan); color:var(--cyan); background:rgba(89,220,208,.04); }
+.toolbox-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(250px,1fr); gap:22px; align-items:start; margin-top:16px; }
+.toolbox-list { display:grid; gap:8px; max-height:60vh; overflow:auto; padding-right:5px; }
+.toolbox-row { display:flex; align-items:center; gap:16px; width:100%; text-align:left; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:inherit; padding:17px; cursor:pointer; }
+.toolbox-row.selected { border-color:var(--cyan); background:rgba(89,220,208,.04); }
+.toolbox-row:hover { border-color:var(--muted); }.toolbox-row.selected:hover { border-color:var(--cyan); }
+.toolbox-icon { flex-shrink:0; color:var(--cyan); font-size:18px; width:34px; height:36px; background:rgba(89,220,208,.06); display:grid; place-items:center; border-radius:7px; }
+.toolbox-row>span:nth-child(2) { display:grid; gap:7px; min-width:0; flex:1; }.toolbox-row small { color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:.06em; }
+.toolbox-row strong { font-size:13px; }.toolbox-row span span { color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.toolbox-row em { font-style:normal; color:var(--muted); font-size:11px; }
+.toolbox-description { color:var(--muted); line-height:1.85; font-size:13px; }
+#toolbox-detail h2 { font-size:22px; line-height:1.4; margin:18px 0; }#toolbox-detail .primary-button { width:100%; margin-top:16px; }
+.embedded-terminal { height:57vh; min-height:340px; background:#10151e; padding:18px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.embedded-terminal .xterm { height:100%; }
+@media(max-width:1100px) { .toolbox-layout { grid-template-columns:1fr; }.toolbox-setup form { grid-template-columns:1fr; }.toolbox-intro { align-items:stretch; flex-direction:column; }.toolbox-filters { flex-wrap:wrap; }.toolbox-list { max-height:45vh; } }
 #job-list { max-height:75vh; overflow:auto; padding:12px; }
 .job-row,.snapshot-row { width:100%; background:transparent; color:inherit; border:1px solid transparent; border-bottom-color:var(--line); text-align:left; padding:15px 12px; display:grid; gap:7px; cursor:pointer; border-radius:7px; }
 .job-row strong,.snapshot-row strong { font-size:12px; }

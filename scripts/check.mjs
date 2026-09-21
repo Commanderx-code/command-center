@@ -20,3 +20,13 @@ if (pkg.version !== config.version)
 console.log(
   "JavaScript syntax, desktop configuration and version checks passed.",
 );
+
+const cargo = await readFile(new URL("src-tauri/Cargo.toml", root), "utf8");
+const toolbox = await readFile(
+  new URL("src-tauri/src/toolbox.rs", root),
+  "utf8",
+);
+const pinned = cargo.match(/linutil_core[^\n]+rev = "([a-f0-9]+)"/)?.[1];
+const reported = toolbox.match(/REVISION: &str = "([a-f0-9]+)"/)?.[1];
+if (!pinned || pinned !== reported)
+  throw new Error("Toolbox revision must match the pinned core dependency");

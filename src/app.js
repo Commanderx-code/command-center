@@ -120,6 +120,8 @@ async function openRepository(path, target) {
 }
 
 const viewCopy = {
+  toolbox: ["Workstation tools", "Toolbox"],
+  terminal: ["Interactive workspace", "Terminal"],
   dashboard: ["Overview", "Good evening, Commander."],
   repositories: ["Workspace", "Repositories"],
   sync: ["System", "System Sync"],
@@ -291,6 +293,7 @@ function bindEvents() {
   $("#repo-sort").addEventListener("change", renderRepositoryGrid);
   $("#dismiss-toast").addEventListener("click", () => $("#toast").classList.remove("show"));
   document.addEventListener("keydown", event => {
+    if (event.target.closest?.("#embedded-terminal")) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
       event.preventDefault(); switchView("repositories"); $("#repo-search").focus();
     }
