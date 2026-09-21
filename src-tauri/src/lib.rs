@@ -66,6 +66,7 @@ pub fn run() {
             system_tools::unit_details,
             system_tools::system_inventory,
             system_tools::export_inventory,
+            system_tools::export_service_cleanup,
             health::system_health,
             health::recovery_notes
         ])

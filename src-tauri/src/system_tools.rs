@@ -66,7 +66,7 @@ pub async fn system_units(scope:String, timers:bool) -> Result<Value,String> {
 pub async fn unit_details(scope:String, unit:String) -> Result<Value,String> {
     tauri::async_runtime::spawn_blocking(move||{
         unit_name(&unit)?;
-        let mut args=scope_args(&scope)?;args.extend(["show","--no-pager","--property=Id,Description,LoadState,ActiveState,SubState,UnitFileState,Result,ExecMainStatus,FragmentPath,Triggers",&unit]);
+        let mut args=scope_args(&scope)?;args.extend(["show","--no-pager","--property=Id,Description,LoadState,ActiveState,SubState,UnitFileState,Result,ExecMainStatus,FragmentPath,Triggers,TriggeredBy,RequiredBy,WantedBy",&unit]);
         let details=output("systemctl",&args)?;
         let mut journal=if scope=="user"{vec!["--user"]}else{vec![]};journal.extend(["--no-pager","--lines=100","--output=short-iso","--unit",&unit]);
         let logs=output("journalctl",&journal);
@@ -174,4 +174,17 @@ mod tests {
         let rows=properties("Id=a.timer\nTimersCalendar=OnCalendar=weekly\n\nId=b.timer\nActiveState=inactive\n");
         assert_eq!(rows.len(),2);assert_eq!(rows[0]["TimersCalendar"],"OnCalendar=weekly");
     }
+}
+
+#[tauri::command]
+pub fn export_service_cleanup(app:tauri::AppHandle)->Result<String,String>{
+    let folder=app.path().download_dir().map_err(|e|e.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e|e.to_string())?;
+    let path=folder.join("service-cleanup.sh");
+    // Refuse replacement of a user's existing file or symlink.
+    use std::io::Write;
+    let mut file=fs::OpenOptions::new().write(true).create_new(true).open(&path)
+        .map_err(|e|format!("Could not create {}: {e}. Move any existing helper before exporting again.",path.display()))?;
+    file.write_all(include_bytes!("../../scripts/service-cleanup.sh")).map_err(|e|e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
 }

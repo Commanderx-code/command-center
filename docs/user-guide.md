@@ -129,3 +129,11 @@ In repository Details, **Review & stash** saves tracked working changes and the 
 Press **Ctrl+K** (Cmd+K on a Mac keyboard) or click **Command palette** to search pages, repositories, and saved custom actions. Use arrow keys and Enter, or click a result. Opening a repository shows Details. Custom actions still require command review. The palette does not interrupt an open confirmation or settings-import dialog.
 
 **System inventory** collects OS/kernel, CPU, memory, storage, disk usage, and installed tool versions. Missing tools or timed-out probes are marked unavailable. **Export displayed report** saves the currently displayed report as JSON in Downloads. The report can include filesystem mount paths and configuration details printed by version commands; inspect it before sharing. Inventory export does not publish or upload it.
+
+### Service filters and cleanup
+
+Services includes All, Active, Inactive, Failed, and Not loaded filters. Search combines with the selected state; inactive means exactly systemd's `inactive` state, not failed or unloaded.
+
+Expand **Service cleanup** and export the helper to Downloads. Exporting never executes it and refuses to overwrite an existing helper. Run `bash ~/Downloads/service-cleanup.sh user` or `bash ~/Downloads/service-cleanup.sh system` to audit inactive/failed services. No age or unused classification is inferred: a scheduled, socket-activated, or one-shot service can normally be inactive.
+
+For a service you have identified as unnecessary, run `bash ~/Downloads/service-cleanup.sh user --disable NAME.service`. For a system service use `sudo bash ~/Downloads/service-cleanup.sh system --disable NAME.service`. The helper shows properties, triggers, reverse dependencies and a re-enable command, then requires typing the full name. It checks state again before disabling. Only loaded, persistently enabled, inactive services qualify. It never deletes unit files, uninstalls packages, masks units, or stops running services. Disabling does not prevent activation by timers, sockets, dependencies, or applications. Failed services require investigation rather than automatic cleanup. Review logs from the service details before proceeding. A service can change state after the final check; disabling does not stop it in that case.

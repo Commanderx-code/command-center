@@ -4,6 +4,8 @@ Release downloads and full notes are available on [GitHub Releases](https://gith
 
 ## Unreleased
 
+- Add service state filters and an exportable audit-first cleanup helper with individually confirmed disabling and re-enable instructions.
+
 - Added user-service controls, system-service inspection, and journal views.
 - Added timer inspection and an app-owned personal backup schedule editor.
 - Added stash/restore and branch publishing with explicit command review.
