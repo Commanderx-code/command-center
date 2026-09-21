@@ -75,3 +75,31 @@ Open a repository's **Details** to select whole files and choose **Stage selecte
 Review the **Staged diff**, enter a message, and choose **Review & commit**. A file can have both staged and unstaged edits; only staged contents are committed. Command Center checks the staged tree, current commit, and branch again before starting. If they changed since the preview, refresh Details and review again. Changes by other Git tools after that final check remain possible, so avoid concurrent Git operations in the same repository.
 
 A successful commit is local. Use **Push** separately to publish it. Normal Git hooks, identity and signing settings remain active. If hooks or signing require interactive input, use the repository Terminal button. Conflicts and active merge/rebase/cherry-pick workflows must be finished in the terminal or editor. Large staged diffs and non-UTF-8 filenames require terminal review. Commit messages remain as session drafts after errors or cancelled review; they are cleared after a successful app commit. Details refreshes after a staging or commit job completes while the dialog is open.
+
+## Review changes and branches
+
+In repository **Details**, click a filename to view its diff, then use **Staged** and **Unstaged** to compare index and working-tree contents. **All tracked files** returns to the combined diff; new files have an individual preview before staging. Additions and deletions are colored and retain their +/− prefixes. Binary files receive a summary. Oversized previews are labeled as truncated.
+
+Git operations keep Details open. Status, exit code, and available output appear below the commit controls; **View Activity** opens the operation history. A failed commit retains its draft message. **Refresh details** reloads the file list and diff. Commands remain subject to review before execution.
+
+The **Branches** controls list local branches and support **Switch branch** and **Create & switch**. These require an existing commit, no pending changes (including new files), and no active merge/rebase/cherry-pick. New branches remain local. The existing Push action requires an upstream; configure that through your Git terminal before publishing a new branch.
+
+## Transfer settings
+
+**Export saved settings** writes a versioned JSON file to Downloads in the desktop app. In browser preview it downloads a JSON file. The export contains saved preferences, integration paths, and custom commands; it does not read the contents of credential files or KWallet.
+
+**Import settings** opens a preview. Machine paths, editor/terminal selections, scan depth, integration settings, and custom commands remain from this device by default. Select the checkbox to include them from the export. **Apply to draft** updates the settings form; **Save settings** persists it, and **Discard changes** restores the saved configuration. Importing and saving commands never runs them.
+
+## Custom quick actions
+
+Add up to 20 actions under **Settings → Custom actions**. Supply a name, command, working folder, shell, and execution mode. Saved actions appear in **Your quick actions** on the dashboard.
+
+- **Direct** splits quoted arguments without shell expansion. Use executable names on PATH or absolute executable paths.
+- **Fish** and **Bash** load interactive shell configuration so user functions are available. For example, a Fish action can run `full-upgrade` with `~` as its working folder.
+- **Embedded** uses the interactive terminal in Command Center. **External** uses the selected terminal. **Background** records output in Activity and has no interactive input; use a terminal mode for password prompts.
+
+Every run previews the command and working folder and uses the existing job lifecycle, cancellation, and exit reporting. Commands and arguments are recorded in local Activity, so keep passwords out of command text. Custom actions are arbitrary commands run with your normal user permissions; their effects depend on the command you save.
+
+## Backup overview
+
+Backup & Restore shows the location status reported by your backup-health helper, the exact last successful backup time when available, and the next setup step. A missing report is **unknown**, not proof that a drive is disconnected. Remote Restic locations are labeled as not connection-tested. Personal/full backup buttons require an executable configured helper and are disabled while checking health or when the helper explicitly reports a configured local drive disconnected. Refresh after attaching a drive. Helpers retain their own checks and prompts.

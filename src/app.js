@@ -1,3 +1,4 @@
+import { createPreferenceExtras } from "./preference-extras.js";
 import { version } from "../package.json";
 import { setupSettingsTools } from "./settings-tools.js";
 import { createFeatures } from "./features.js";
@@ -190,6 +191,7 @@ function updateDraftStatus() {
 }
 function applyPreferences() {
   const prefs = state.settings;
+  preferenceExtras.renderQuick();
   applyAppearance(prefs);
   $("#repo-sort").value = prefs.repoSort;
   document.documentElement.dataset.accent = prefs.accent;
@@ -206,6 +208,7 @@ function applyPreferences() {
 }
 
 function populatePreferences(prefs) {
+  preferenceExtras.populate(prefs.customActions);
   for (const [id,key] of [["name","displayName"],["editor","editor"],["terminal","terminal"],["accent","accent"],["density","density"],["startup","startupPage"],["depth","scanDepth"],["refresh","refreshSeconds"],["theme","theme"],["text-size","textSize"],["layout","repoLayout"],["sort","repoSort"]]) {
     $(`#pref-${id}`).value = prefs[key];
   }
@@ -220,7 +223,7 @@ function draftPreferences() {
   const roots = $("#pref-roots").value.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
   if (roots.length > 32 || roots.some(r => r.length > 4096 || r.includes("\0") || !/^(~$|~\/|\/)/.test(r))) throw new Error("Use up to 32 absolute or ~/ folder paths, one per line.");
   if (!$("#pref-name").value.trim()) throw new Error("Enter a display name.");
-  return normalize({ integrations: features.readIntegrations(), displayName: $("#pref-name").value, editor: $("#pref-editor").value,
+  return normalize({ customActions: preferenceExtras.read(), integrations: features.readIntegrations(), displayName: $("#pref-name").value, editor: $("#pref-editor").value,
     terminal: $("#pref-terminal").value, accent: $("#pref-accent").value, density: $("#pref-density").value,
     theme: $("#pref-theme").value, textSize: $("#pref-text-size").value,
     repoLayout: $("#pref-layout").value, repoSort: $("#pref-sort").value,
@@ -325,6 +328,7 @@ function bindEvents() {
 
 const features = createFeatures({state, $, $$, escapeHtml, toast, switchView, loadRepositories, renderRepositoryGrid});
 $("#preferences-form").inert = true;
+const preferenceExtras = createPreferenceExtras({ state, $, escapeHtml, draftPreferences, populatePreferences, updateDraftStatus, action: features.action, toast, invoke });
 setupSettingsTools({ invoke, readIntegrations: features.readIntegrations });
 $(".version-badge").textContent = `Version ${version}`;
 bindEvents();

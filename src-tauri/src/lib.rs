@@ -3,6 +3,7 @@ mod configuration;
 mod diagnostics;
 mod health;
 mod git_changes;
+mod custom_actions;
 mod integrations;
 mod jobs;
 mod launcher;
@@ -34,7 +35,9 @@ pub fn run() {
             open_repository,
             settings::load_settings,
             settings::save_settings,
+            settings::export_settings,
             repositories::repository_details,
+            git_changes::repository_diff,
             workspace::load_workspace,
             workspace::save_project,
             workspace::launch_project,

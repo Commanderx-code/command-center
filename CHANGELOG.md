@@ -2,6 +2,14 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## Unreleased
+
+- Added file-by-file colored staged/unstaged diffs and persistent Git operation feedback in Details.
+- Added local branch creation and switching with clean-tree and active-operation checks.
+- Added settings export to Downloads and previewed imports with optional machine settings.
+- Added saved dashboard quick actions with direct, Fish, or Bash commands and embedded, external, or background execution.
+- Added a backup overview with explicit connected/disconnected/unknown states and helper availability.
+
 ## [0.3.3](https://github.com/Commanderx-code/command-center/releases/tag/v0.3.3) — 2026-09-21
 
 - Added staging, unstaging, staged diff review, and local commits in repository Details, with command review and Activity results.

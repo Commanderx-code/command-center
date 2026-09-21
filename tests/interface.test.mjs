@@ -75,6 +75,7 @@ async function setup(overrides = {}) {
     runScripts: "outside-only",
   });
   const w = dom.window;
+  w.TextEncoder = TextEncoder;
   w.matchMedia = () => ({ matches: false, addEventListener() {} });
   // xterm probes canvas when imported; terminal rendering is covered in the browser.
   w.HTMLCanvasElement.prototype.getContext = () => null;
@@ -132,7 +133,8 @@ test("repository action requires review, cancel never starts it, confirmation us
       x.calls.find((c) => c.command === "start_job").args.id,
       "review-token",
     );
-    assert.equal(x.$("#activity-view").classList.contains("active-view"), true);
+    assert.equal(x.$("#repo-detail-dialog").open, true);
+    assert.match(x.$("#git-change-status").textContent, /running/);
   } finally {
     x.dom.window.close();
   }
@@ -541,4 +543,62 @@ test('Git preparation errors stay visible and retain the commit message', async 
     assert.equal(x.$('#commit-message').value, 'Keep this draft');
     assert.equal(x.calls.some(c => c.command === 'start_job'), false);
   } finally { x.dom.window.close(); }
+});
+
+test('file diff tabs ignore stale responses and display code as text', async () => {
+  const waiting=[];
+  const x=await setup({repository_details:{files:[{path:'one',status:'MM',staged:true,unstaged:true},{path:'two',status:' M',staged:false,unstaged:true}],commits:[],stagedDiff:'+initial',unstagedDiff:'-working'},repository_diff:args=>new Promise(resolve=>waiting.push({args,resolve}))});
+  try {
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    x.$('[data-file-diff="0"]').click();await settle();
+    x.$('[data-file-diff="1"]').click();await settle();
+    waiting[1].resolve({text:'+<script>alert(1)</script>\n-removed',truncated:false});await settle();
+    waiting[0].resolve({text:'+stale',truncated:false});await settle();
+    assert.match(x.$('#file-diff').textContent,/<script>/);assert.equal(x.$('#file-diff script'),null);
+    assert.ok(x.$('#file-diff .diff-add'));assert.ok(x.$('#file-diff .diff-remove'));
+    assert.equal(waiting[1].args.staged,false);
+    x.$('#diff-all').click();await settle();assert.match(x.$('#file-diff').textContent,/working/);
+  } finally{x.dom.window.close();}
+});
+test('branch operations require a clean tree and carry the reviewed starting branch', async()=>{
+  const x=await setup({repository_details:{files:[],commits:[],head:'head-1',branchRef:'refs/heads/main',branches:['main','feature']}});
+  try{
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    x.$('#new-branch').value='feature/new';x.$('#new-branch').dispatchEvent(new x.w.Event('input'));
+    x.$('[data-git="branch-create"]').click();await settle();
+    const req=x.calls.find(c=>c.command==='prepare_job').args.request;
+    assert.equal(req.branchName,'feature/new');assert.equal(req.expectedHead,'head-1');assert.equal(req.branchRef,'refs/heads/main');
+    x.$('#review-cancel').click();await settle();
+    x.responses.repository_details.files=[{path:'new',status:'??'}];x.$('#refresh-git-details').click();await settle();
+    assert.equal(x.$('[data-git="branch-switch"]').disabled,true);
+  }finally{x.dom.window.close();}
+});
+test('custom actions save through preferences and run only after command review',async()=>{
+  const x=await setup();
+  try{
+    x.$('[data-view="settings"]').click();x.$('#add-custom-action').click();
+    x.$('[data-field="name"]').value='Upgrade';x.$('[data-field="command"]').value='full-upgrade';
+    x.$('[data-field="shell"]').value='fish';x.$('[data-field="mode"]').value='external';
+    x.$('[data-field="command"]').dispatchEvent(new x.w.Event('input',{bubbles:true}));
+    submit(x.w,x.$('#preferences-form'));await settle();
+    const saved=x.calls.find(c=>c.command==='save_settings').args.settings;
+    assert.equal(saved.customActions[0].shell,'fish');
+    x.$('[data-custom-run]').click();await settle();
+    assert.equal(x.calls.find(c=>c.command==='prepare_job').args.request.customId,saved.customActions[0].id);
+    assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+    x.$('#review-cancel').click();await settle();
+    x.responses.export_settings='/home/fixture/Downloads/settings.json';x.$('#export-settings').click();await settle();
+    assert.match(x.$('#transfer-status').textContent,/Downloads/);
+  }finally{x.dom.window.close();}
+});
+test('failed Git jobs show output in Details and preserve the commit draft',async()=>{
+  const x=await setup();
+  try{
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    x.$('#commit-message').value='Keep my message';x.$('#commit-message').dispatchEvent(new x.w.Event('input'));
+    x.responses.job_history={jobs:[{id:'failure',action:'commit',cwd:'/fixture/repo',title:'Commit',status:'failed',output:'Author identity unknown',exitCode:128,finishedAt:Date.now()}]};
+    x.$('#activity-refresh').click();await settle();
+    assert.match(x.$('#git-change-status').textContent,/failed/);assert.match(x.$('#git-inline-output').textContent,/Author identity/);
+    assert.equal(x.$('#commit-message').value,'Keep my message');
+  }finally{x.dom.window.close();}
 });

@@ -31,7 +31,10 @@ pub fn snapshot(path: &Path) -> Result<Value, String> {
     let tree = if conflicts { String::new() } else { git(path, &["write-tree"])?.trim().to_owned() };
     let diff = git(path, &["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color", "--patch", "--stat"])?;
     let truncated = diff.len() >= 4_000_000;
-    Ok(json!({"files": files, "stagedDiff": diff, "diffTruncated": truncated,
+    let branches = git(path, &["for-each-ref", "--format=%(refname:strip=2)", "refs/heads/"])?;
+    let branches: Vec<_> = branches.lines().collect();
+    let unstaged = git(path, &["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--patch"])?;
+    Ok(json!({"branches": branches, "unstagedDiff": unstaged, "unstagedTruncated": unstaged.len() >= 4_000_000, "files": files, "stagedDiff": diff, "diffTruncated": truncated,
         "indexTree": tree, "head": head(path), "branchRef": branch(path), "conflicts": conflicts}))
 }
 fn checked_paths(request: &Request, data: &Value) -> Result<Vec<String>, String> {
@@ -60,6 +63,24 @@ pub fn plan(request: &Request) -> Result<Plan, String> {
     let data = snapshot(&path)?;
     let mut args: Vec<String> = vec!["-C".into(), path.to_string_lossy().into_owned(), "--literal-pathspecs".into()];
     let explanation = match request.action.as_str() {
+        "branch-create" | "branch-switch" => {
+            if !data["files"].as_array().unwrap().is_empty() { return Err("Commit or stash all changes, including new files, before switching branches".into()); }
+            if data["head"] == "" { return Err("Create your first commit before managing branches".into()); }
+            if data["head"] != request.expected_head || data["branchRef"] != request.branch_ref { return Err("Branch changed; refresh Details and review again".into()); }
+            ensure_idle(&path)?;
+            let name = &request.branch_name;
+            if name.is_empty() || name.len() > 200 || name.starts_with('-') || name.contains(['\0', '\r', '\n']) { return Err("Enter a valid branch name (up to 200 bytes)".into()); }
+            git(&path, &["check-ref-format", &format!("refs/heads/{name}")])?;
+            let exists = data["branches"].as_array().unwrap().iter().any(|b| b.as_str() == Some(name.as_str()));
+            if request.action == "branch-create" {
+                if exists { return Err("That branch already exists".into()); }
+                args.extend(["switch".into(), "--no-guess".into(), "-c".into(), name.clone()]);
+            } else {
+                if !exists { return Err("Select an existing local branch".into()); }
+                args.extend(["switch".into(), "--no-guess".into(), "--".into(), name.clone()]);
+            }
+            "Switch branches only with a clean working tree. No files are discarded. New branches are local; publishing requires an upstream."
+        }
         "stage" => {
             let paths = checked_paths(request, &data)?;
             args.extend(["add".into(), "--all".into(), "--".into()]); args.extend(paths);
@@ -168,4 +189,70 @@ mod tests {
         execute(&request(path, "unstage", &["after"]));
         assert!(path.join("after").is_file());
     }
+    #[test]
+    fn branches_require_clean_tree_and_preserve_starting_revision() {
+        let dir = fixture(); let path = dir.path();
+        fs::write(path.join("file"), "base").unwrap();
+        execute(&request(path, "stage-all", &[])); execute(&commit_request(path));
+        let mut r = request(path, "branch-create", &[]);
+        r.expected_head = head(path); r.branch_ref = branch(path); r.branch_name = "feature/new".into();
+        execute(&r);
+        assert_eq!(branch(path), "refs/heads/feature/new");
+        r.action = "branch-switch".into(); r.branch_ref = branch(path); r.branch_name = "main".into();
+        fs::write(path.join("new-file"), "keep this").unwrap();
+        assert!(plan(&r).unwrap_err().contains("stash"));
+        fs::remove_file(path.join("new-file")).unwrap(); execute(&r);
+        assert_eq!(branch(path), "refs/heads/main");
+        r.action = "branch-create".into(); r.branch_ref = branch(path); r.branch_name = "--force".into();
+        assert!(plan(&r).is_err());
+    }
+    #[test]
+    fn file_diffs_separate_index_worktree_and_untracked_contents() {
+        let dir = fixture(); let path = dir.path();
+        fs::write(path.join("file[1]"), "base\n").unwrap();
+        execute(&request(path, "stage-all", &[])); execute(&commit_request(path));
+        fs::write(path.join("file[1]"), "staged\n").unwrap(); execute(&request(path, "stage-all", &[]));
+        fs::write(path.join("file[1]"), "working\n").unwrap();
+        assert!(diff_file(path, "file[1]", true).unwrap()["text"].as_str().unwrap().contains("+staged"));
+        assert!(diff_file(path, "file[1]", false).unwrap()["text"].as_str().unwrap().contains("+working"));
+        fs::write(path.join("new"), "new content").unwrap();
+        assert!(diff_file(path, "new", false).unwrap()["text"].as_str().unwrap().contains("+new content"));
+        assert!(diff_file(path, "../outside", false).is_err());
+    }
+
+}
+
+fn ensure_idle(path: &Path) -> Result<(), String> {
+    for marker in ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "sequencer"] {
+        let location = git(path, &["rev-parse", "--git-path", marker])?;
+        if path.join(location.trim()).exists() { return Err("Finish the active Git operation in your terminal first".into()); }
+    }
+    Ok(())
+}
+#[tauri::command]
+pub async fn repository_diff(path: String, file: String, staged: bool) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || diff_file(&p::repo(&path)?, &file, staged)).await.map_err(|e| e.to_string())?
+}
+fn diff_file(path: &Path, file: &str, staged: bool) -> Result<Value, String> {
+    let data = snapshot(path)?;
+    let row = data["files"].as_array().unwrap().iter().find(|row| row["path"].as_str() == Some(file)).ok_or("File status changed; refresh Details")?;
+    if Path::new(file).components().any(|c| !matches!(c, Component::Normal(_))) { return Err("Invalid filename".into()); }
+    if !staged && row["status"] == "??" {
+        use std::{fs, io::Read};
+        let full = path.join(file);
+        let meta = fs::symlink_metadata(&full).map_err(|e| e.to_string())?;
+        if meta.file_type().is_symlink() { return Ok(json!({"text":format!("New symlink → {}", fs::read_link(full).map_err(|e| e.to_string())?.display()),"truncated":false})); }
+        if !meta.is_file() || !full.canonicalize().map_err(|e|e.to_string())?.starts_with(path) { return Err("Only regular files inside this repository can be previewed".into()); }
+        let mut bytes = Vec::new();
+        fs::File::open(full).map_err(|e|e.to_string())?.take(256_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
+        if bytes.contains(&0) || std::str::from_utf8(&bytes).is_err() { return Ok(json!({"text":"New binary or non-UTF-8 file. Review with your editor before staging.","truncated":false})); }
+        let text = String::from_utf8_lossy(&bytes).lines().map(|l|format!("+{l}")).collect::<Vec<_>>().join("\n");
+        return Ok(json!({"text":text,"truncated":bytes.len()>256_000}));
+    }
+    let mut args = vec!["--literal-pathspecs", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--patch"];
+    if staged { args.push("--cached"); }
+    args.extend(["--", file]);
+    if let Some(original) = row["original"].as_str() { args.push(original); }
+    let text = git(path, &args)?;
+    Ok(json!({"truncated":text.len()>=4_000_000,"text":text}))
 }

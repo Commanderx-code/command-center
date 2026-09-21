@@ -1,3 +1,4 @@
+import { renderBackupOverview } from "./backup-overview.js";
 import { mountGitControls } from "./git-controls.js";
 import { createToolbox } from "./toolbox.js";
 import { normalizeIntegrations, integrationDefaults } from "./preferences.js";
@@ -104,6 +105,7 @@ export function createFeatures(api) {
     healthBusy = false,
     detailVersion = 0,
     configVersion = 0;
+  let gitControls;
   const commitDrafts = new Map();
   const callbacks = new Map(),
     completed = new Set();
@@ -156,6 +158,7 @@ export function createFeatures(api) {
       "beforeend",
       `<section class="panel module-panel attention-dashboard"><div class="panel-heading"><div><p class="eyebrow">Stay on top of things</p><h3>Needs attention</h3></div>${button("View all", 'data-feature-view="attention"')}</div><div id="dashboard-attention"></div></section>`,
     );
+    renderBackupOverview({ target: $("#backup-summary"), health: null, integrations: state.settings.integrations, escapeHtml:e, desktop:state.desktop });
     const statCards = $$(".stats-grid .stat-card");
     for (const [index, id] of [
       [1, "sync"],
@@ -468,6 +471,7 @@ export function createFeatures(api) {
   }
   async function showRepository(path) {
     selectedRepo = path;
+    selectedJob = jobs.find(job => job.cwd === path)?.id || selectedJob;
     const version = ++detailVersion;
     const repo = state.repositories.find((r) => r.path === path);
     $("#repo-detail-title").textContent = repo?.name || path;
@@ -503,14 +507,19 @@ export function createFeatures(api) {
           "",
         )}</div><button class="primary-button" type="submit">Save profile</button></form>`;
     if (!commitDrafts.has(path)) commitDrafts.set(path, { message: "" });
-    mountGitControls({ target: $("#git-controls"), data, path, desktop: state.desktop,
-      escapeHtml: e, action, refresh: () => showRepository(path), toast, draft: commitDrafts.get(path) });
+    gitControls = mountGitControls({ target: $("#git-controls"), data, path, desktop: state.desktop,
+      escapeHtml: e, action, refresh: () => showRepository(path), toast, draft: commitDrafts.get(path), invoke, jobs, openActivity: (id) => { selectedJob = id; $("#repo-detail-dialog").close(); switchView("activity"); } });
     $$("#repo-details [data-repo-job]").forEach((btn) =>
       btn.addEventListener(
         "click",
         guard(async () => {
-          $("#repo-detail-dialog").close();
-          await action({ action: btn.dataset.repoJob, path });
+          btn.disabled = true;
+          try {
+            const id = await action({ action: btn.dataset.repoJob, path }, () => {});
+            if (id && $("#git-change-status")) $("#git-change-status").textContent = `${btn.textContent} running… View Activity for live output.`;
+          } catch (error) {
+            if ($("#git-change-status")) $("#git-change-status").textContent = `Could not start: ${error.message || error}`;
+          } finally { btn.disabled = false; }
         }),
       ),
     );
@@ -541,6 +550,8 @@ export function createFeatures(api) {
     try {
       const history = await run("job_history", { selectedId: selectedJob });
       jobs = history.jobs;
+      gitControls?.updateJobs(jobs);
+      $$("#repo-details [data-repo-job]").forEach(button => { button.disabled = jobs.some(job => job.status === "running"); });
       if (history.closeRequested) {
         switchView("activity");
         toast(
@@ -569,7 +580,7 @@ export function createFeatures(api) {
               true,
             );
         }
-        if (["stage", "stage-all", "unstage", "commit"].includes(job.action)) {
+        if (["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch", "fetch", "pull", "push"].includes(job.action)) {
           if (job.action === "commit" && job.status === "succeeded") {
             commitDrafts.delete(job.cwd);
             toast("Commit saved locally. Use Push to publish it.");
@@ -583,6 +594,13 @@ export function createFeatures(api) {
           void loadRepositories();
           if (health) void refreshHealth();
           if (state.activeView === "sync") void refreshSync();
+        }
+      }
+      if ($("#repo-detail-dialog").open) {
+        const recent = jobs.find(job => job.cwd === selectedRepo);
+        if (recent && $("#git-change-status")) {
+          $("#git-change-status").textContent = `${recent.title}: ${recent.status}${recent.exitCode != null ? ` (exit ${recent.exitCode})` : ''}`;
+          if ($("#git-inline-output")) { $("#git-inline-output").hidden = !recent.output; $("#git-inline-output").textContent = cleanOutput(recent.output || "").slice(-8000); }
         }
       }
       renderActivity();
@@ -743,6 +761,8 @@ export function createFeatures(api) {
   async function refreshHealth() {
     if (healthBusy) return;
     healthBusy = true;
+    for (const button of $$("#backup-view [data-job='backup'], #backup-view [data-job='backup-full']")) button.disabled = true;
+    $("#backup-summary").setAttribute("aria-busy", "true");
     $("#health-time").textContent = "Checking system health…";
     $("#health-panels").setAttribute("aria-busy", "true");
     $$("[data-health-refresh]").forEach((b) => (b.disabled = true));
@@ -758,10 +778,12 @@ export function createFeatures(api) {
       renderHealth();
       renderAttention();
     } catch (err) {
+      $("#backup-summary").textContent = `Backup status unavailable: ${err}. Refresh health before starting a backup.`;
       $("#health-time").textContent = `Health checks failed: ${err}. Previous results may be stale. Retry with Refresh.`;
       toast(`Health checks failed: ${err}`, true);
     } finally {
       healthBusy = false;
+      $("#backup-summary").setAttribute("aria-busy", "false");
       $("#health-panels").setAttribute("aria-busy", "false");
       $$("[data-health-refresh]").forEach((b) => (b.disabled = false));
     }
@@ -786,8 +808,7 @@ export function createFeatures(api) {
     const b = backupState(health, state.settings.integrations.backupMaxHours);
     $("#stat-backup").textContent = b.label;
     $("#stat-backup-detail").textContent = b.detail;
-    $("#backup-summary").textContent =
-      `${b.detail}: ${b.label} · Backup drive ${health.backup?.data?.drive_mounted ? "mounted" : "offline or unknown"}`;
+    renderBackupOverview({ target: $("#backup-summary"), health, integrations: state.settings.integrations, escapeHtml:e, desktop:state.desktop });
     $("#recovery-checks").innerHTML = health.readiness
       .map(
         (r) =>
@@ -1089,6 +1110,7 @@ export function createFeatures(api) {
   function onView(view) {
     toolbox.onView(view);
     if (view === "sync") void refreshSync();
+    if (view === "backup") void refreshHealth();
     if (view === "config" && !configDocument) void loadConfig();
     if (view === "activity") renderActivity();
     if (view === "attention") renderAttention();
@@ -1097,6 +1119,7 @@ export function createFeatures(api) {
   const toolbox = createToolbox({ ...api, run, guard, review, action });
   return {
     initialize,
+    action,
     onView,
     filtered,
     decorateRepositories,

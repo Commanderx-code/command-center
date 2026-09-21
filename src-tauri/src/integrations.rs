@@ -80,6 +80,8 @@ pub fn detect_integrations() -> Integrations {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Request {
+    pub branch_name: String,
+    pub custom_id: String,
     pub files: Vec<String>,
     pub message: String,
     pub index_tree: String,
@@ -188,9 +190,10 @@ pub fn restic_args(i: &Integrations) -> Result<Vec<String>, String> {
 }
 pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
     s.validate()?;
-    if ["stage", "stage-all", "unstage", "commit"].contains(&r.action.as_str()) {
+    if ["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch"].contains(&r.action.as_str()) {
         return crate::git_changes::plan(r);
     }
+    if r.action == "custom" { return crate::custom_actions::plan(r, s); }
     let i = &s.integrations;
     if ["fetch", "pull", "push", "sync-fetch", "sync-pull"].contains(&r.action.as_str()) {
         let path = p::repo(if r.action.starts_with("sync-") {

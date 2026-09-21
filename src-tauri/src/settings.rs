@@ -5,6 +5,7 @@ use tauri::Manager;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    pub custom_actions: Vec<crate::custom_actions::CustomAction>,
     pub display_name: String,
     pub editor: String,
     pub terminal: String,
@@ -27,6 +28,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            custom_actions: Vec::new(),
             display_name: "Commander".into(),
             editor: "auto".into(),
             terminal: "auto".into(),
@@ -96,6 +98,12 @@ impl Settings {
             || !["name", "name-desc", "attention"].contains(&self.repo_sort.as_str())
         {
             return Err("Invalid display preferences".into());
+        }
+        if self.custom_actions.len() > 20 { return Err("Use up to 20 custom actions".into()); }
+        let mut ids = std::collections::HashSet::new();
+        for action in &self.custom_actions {
+            action.validate()?;
+            if !ids.insert(&action.id) { return Err("Custom action IDs must be unique".into()); }
         }
         self.integrations.validate()?;
         Ok(())
@@ -256,4 +264,16 @@ mod tests {
         settings.roots.clear();
         assert!(settings.validate().is_ok());
     }
+}
+
+#[tauri::command]
+pub fn export_settings(app: tauri::AppHandle) -> Result<String, String> {
+    let settings = load_settings(app.clone())?.unwrap_or_default();
+    let folder = app.path().download_dir().map_err(|e|e.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e|e.to_string())?;
+    let path = folder.join(format!("command-center-settings-{}.json", crate::platform::now()));
+    let data = serde_json::to_vec_pretty(&serde_json::json!({"format":"command-center-settings","version":1,"settings":settings})).map_err(|e|e.to_string())?;
+    if path.exists() { return Err("Export filename already exists; try again".into()); }
+    crate::platform::atomic_write(&path, &data)?;
+    Ok(path.to_string_lossy().into_owned())
 }

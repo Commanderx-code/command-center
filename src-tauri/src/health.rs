@@ -84,6 +84,11 @@ fn collect(s: Settings) -> Value {
                 .count()
         })
         .unwrap_or(0);
+    let executable = |value: &str| {
+        use std::os::unix::fs::PermissionsExt;
+        p::expand(value).ok().and_then(|path| fs::metadata(path).ok()).is_some_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+    };
+    let helpers = json!({"personal":executable(&i.backup_script),"full":executable(&i.full_backup_script)});
     let readiness = json!([
         {"label":"Dotfiles working tree","ready":dotfiles.as_ref().is_some_and(|p|p.join(".git").exists()),"detail":i.dotfiles_path},
         {"label":"Home Manager flake","ready":dotfiles.as_ref().is_some_and(|p|p.join("home-manager/flake.nix").exists()||p.join("flake.nix").exists()),"detail":i.flake_profile},
@@ -91,7 +96,7 @@ fn collect(s: Settings) -> Value {
         {"label":"Encrypted recovery files","ready":encrypted>0,"detail":format!("{encrypted} encrypted files found; decryptability not tested")},
         {"label":"Recovery instructions","ready":exists(&i.recovery_notes_path),"detail":i.recovery_notes_path}
     ]);
-    json!({"checkedAt":p::now(),"disk":disk,"userServices":user_services,"systemServices":system_services,"updates":updates,"batteries":batteries,"backup":backup,"readiness":readiness,
+    json!({"backupHelpers":helpers,"checkedAt":p::now(),"disk":disk,"userServices":user_services,"systemServices":system_services,"updates":updates,"batteries":batteries,"backup":backup,"readiness":readiness,
         "tools":(["git","home-manager","restic","ghostty","fastfetch"].map(|name|json!({"name":name,"available":p::available(name)})))})
 }
 #[tauri::command]
