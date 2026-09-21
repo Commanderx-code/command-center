@@ -37,6 +37,18 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "Your Linux workstation control center",
-    "longDescription": "Manage repositories, Home Manager, backups, configuration and workstation health."
+    "longDescription": "Manage repositories, Home Manager, backups, configuration and workstation health.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libc6 (>= 2.39)"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "libc.so.6(GLIBC_2.39)(64bit)"
+        ]
+      }
+    }
   }
 }

@@ -36,6 +36,8 @@ npm run desktop:install
 
 This installs `~/.local/bin/command-center`, its icon, and a desktop entry. No root access is needed. Launch **Command Center** from your application menu. An existing installed executable is retained as `command-center.previous` when replaced.
 
+Published `.deb` and `.rpm` downloads are available on the [GitHub releases page](https://github.com/Commanderx-code/command-center/releases). Version 0.3.2 packages target Linux x86_64 and require glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. Verify downloads against the accompanying `SHA256SUMS` file.
+
 Other build commands:
 
 ```bash
