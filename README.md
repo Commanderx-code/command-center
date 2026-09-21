@@ -58,7 +58,7 @@ On the first desktop launch without a configured dotfiles integration, Command C
 
 ## Toolbox integration
 
-The desktop links directly to `linutil_core` from Commander Toolbox at commit `880b79c26bd475af018d98ae7dea5d206a0b211d`. Its embedded script tree, relative imports, interpreter selection, and preconditions remain shared with the TUI. A worker owns the extracted tree for the lifetime of the app. Compatibility is checked again during review and immediately before execution. There is no runtime download of the catalog; individual scripts can download their normal dependencies.
+The desktop links directly to `linutil_core` from Commander Toolbox at commit `6a7edbf834ee60c88bd24f7c6cab853329c8f38e`. Its embedded script tree, relative imports, interpreter selection, and preconditions remain shared with the TUI. A worker owns the extracted tree for the lifetime of the app. Compatibility is checked again during review and immediately before execution. There is no runtime download of the catalog; individual scripts can download their normal dependencies.
 
 Open a category folder, then its subfolders to reach a tool. Category buttons are shortcuts to the top-level folders. Search and favorites show matching tools within the current folder; use **All tools** to search the entire catalog. **Open containing folder** takes a search result back to its menu.
 

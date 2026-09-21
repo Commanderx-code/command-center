@@ -5,7 +5,7 @@ use linutil_core::{Command, TabList};
 use serde::Serialize;
 use std::{collections::BTreeSet, sync::mpsc, thread};
 
-pub const REVISION: &str = "880b79c26bd475af018d98ae7dea5d206a0b211d";
+pub const REVISION: &str = "6a7edbf834ee60c88bd24f7c6cab853329c8f38e";
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

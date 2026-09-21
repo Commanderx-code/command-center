@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "command-center"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "libc",
  "linutil_core",
@@ -1832,7 +1832,7 @@ dependencies = [
 [[package]]
 name = "linutil_core"
 version = "26.7.17"
-source = "git+https://github.com/Commanderx-code/commander-toolbox.git?rev=880b79c26bd475af018d98ae7dea5d206a0b211d#880b79c26bd475af018d98ae7dea5d206a0b211d"
+source = "git+https://github.com/Commanderx-code/commander-toolbox.git?rev=6a7edbf834ee60c88bd24f7c6cab853329c8f38e#6a7edbf834ee60c88bd24f7c6cab853329c8f38e"
 dependencies = [
  "ego-tree",
  "include_dir",
