@@ -1,3 +1,4 @@
+import { mountGitControls } from "./git-controls.js";
 import { createToolbox } from "./toolbox.js";
 import { normalizeIntegrations, integrationDefaults } from "./preferences.js";
 import {
@@ -103,6 +104,7 @@ export function createFeatures(api) {
     healthBusy = false,
     detailVersion = 0,
     configVersion = 0;
+  const commitDrafts = new Map();
   const callbacks = new Map(),
     completed = new Set();
   const run = async (command, args = {}) => {
@@ -176,11 +178,11 @@ export function createFeatures(api) {
     );
     $("#section-repositories").insertAdjacentHTML(
       "afterend",
-      `<section class="panel settings-section integration-section"><div class="section-title"><span>05</span><div><h3>System integrations</h3><p>Use your installed helpers and editable configuration sources.</p></div></div><div class="button-row">${button("Detect existing setup", 'id="detect-integrations"')}</div>${integrationFields.map(([key, label, help]) => `<label class="integration-field" for="integration-${key}"><span>${label}<small>${help}</small></span><input id="integration-${key}" ${key === "backupMaxHours" ? 'type="number" min="1" max="8760"' : 'type="text"'} autocomplete="off"></label>`).join("")}<p class="settings-help">Credential fields identify an existing wallet entry or password file. Command Center does not ask for or store your backup password.</p></section>`,
+      `<section id="section-integrations" class="panel settings-section integration-section"><div class="section-title"><span>05</span><div><h3>System integrations</h3><p>Use your installed helpers and editable configuration sources.</p></div></div><div class="button-row">${button("Detect existing setup", 'id="detect-integrations"')}${button("Check availability", 'id="check-integrations"')}</div><p id="integration-check-status" role="status">Check paths and tools using the values below.</p><div id="integration-check-results"></div>${integrationFields.map(([key, label, help]) => `<label class="integration-field" for="integration-${key}"><span>${label}<small>${help}</small></span><input id="integration-${key}" ${key === "backupMaxHours" ? 'type="number" min="1" max="8760"' : 'type="text"'} autocomplete="off"></label>`).join("")}<p class="settings-help">Credential fields identify an existing wallet entry or password file. Command Center does not ask for or store your backup password.</p></section>`,
     );
     $(".settings-links").insertAdjacentHTML(
       "beforeend",
-      '<a href="#integration-dotfilesPath">Integrations</a>',
+      '<a href="#section-integrations">Integrations</a>',
     );
     document.body.insertAdjacentHTML(
       "beforeend",
@@ -487,7 +489,7 @@ export function createFeatures(api) {
       ...workspace[path],
     };
     $("#repo-details").innerHTML =
-      `<p class="path-label">${e(path)}</p><div class="button-row">${["fetch", "pull", "push"].map((name) => button(name[0].toUpperCase() + name.slice(1), `data-repo-job="${name}"`)).join("")}</div><p class="settings-help">Fetch updates remote status. Pull only fast-forwards a clean branch. Push publishes to the configured upstream.</p><div class="module-columns"><section><h3>Changed files</h3>${data.files.length ? `<ul class="file-list">${data.files.map((f) => `<li><code>${e(f.status)}</code><span>${e(f.original ? f.original + " → " : "")}${e(f.path)}</span></li>`).join("")}</ul>` : empty("Working tree clean")}<pre class="output compact-output">${e(data.diff || "No tracked-file diff")}</pre></section><section><h3>Recent commits</h3><ul class="commit-list">${data.commits.map((c) => `<li><code>${e(c.hash)}</code><span>${e(c.subject)}<small>${e(c.age)}</small></span></li>`).join("")}</ul></section></div><form id="project-form" class="stack-form"><h3>Organization & launch profile</h3><label>Group<input id="project-group" maxlength="60" value="${e(project.group || "")}" placeholder="Work, personal, system…"></label><label>Documentation URL<input id="project-docs" type="url" value="${e(project.documentation || "")}" placeholder="https://…"></label><div class="check-row">${[
+      `<p class="path-label">${e(path)}</p><div class="button-row">${["fetch", "pull", "push"].map((name) => button(name[0].toUpperCase() + name.slice(1), `data-repo-job="${name}"`)).join("")}</div><p class="settings-help">Fetch updates remote status. Pull only fast-forwards a clean branch. Push publishes to the configured upstream.</p><div id="git-controls"></div><div class="module-columns"><section><h3>Change summary</h3><pre class="output compact-output">${e(data.diff || "No tracked-file diff")}</pre></section><section><h3>Recent commits</h3><ul class="commit-list">${data.commits.map((c) => `<li><code>${e(c.hash)}</code><span>${e(c.subject)}<small>${e(c.age)}</small></span></li>`).join("")}</ul></section></div><form id="project-form" class="stack-form"><h3>Organization & launch profile</h3><label>Group<input id="project-group" maxlength="60" value="${e(project.group || "")}" placeholder="Work, personal, system…"></label><label>Documentation URL<input id="project-docs" type="url" value="${e(project.documentation || "")}" placeholder="https://…"></label><div class="check-row">${[
         ["launchEditor", "Editor"],
         ["launchTerminal", "Terminal"],
         ["launchDocs", "Documentation"],
@@ -500,6 +502,9 @@ export function createFeatures(api) {
         .join(
           "",
         )}</div><button class="primary-button" type="submit">Save profile</button></form>`;
+    if (!commitDrafts.has(path)) commitDrafts.set(path, { message: "" });
+    mountGitControls({ target: $("#git-controls"), data, path, desktop: state.desktop,
+      escapeHtml: e, action, refresh: () => showRepository(path), toast, draft: commitDrafts.get(path) });
     $$("#repo-details [data-repo-job]").forEach((btn) =>
       btn.addEventListener(
         "click",
@@ -554,7 +559,7 @@ export function createFeatures(api) {
         if (callback) {
           if (job.status === "succeeded") {
             try {
-              callback(await run("job_result", { id: job.id }));
+              await callback(await run("job_result", { id: job.id }));
             } catch (err) {
               toast(err.message, true);
             }
@@ -563,6 +568,16 @@ export function createFeatures(api) {
               `${job.title}: ${job.status}. Open Activity for details.`,
               true,
             );
+        }
+        if (["stage", "stage-all", "unstage", "commit"].includes(job.action)) {
+          if (job.action === "commit" && job.status === "succeeded") {
+            commitDrafts.delete(job.cwd);
+            toast("Commit saved locally. Use Push to publish it.");
+          }
+          if ($("#repo-detail-dialog").open && selectedRepo === job.cwd) {
+            try { await showRepository(selectedRepo); }
+            catch (error) { toast(`Refresh Details failed: ${error}`, true); }
+          }
         }
         if (job.finishedAt > Date.now() - 10000) {
           void loadRepositories();
@@ -692,13 +707,19 @@ export function createFeatures(api) {
       ),
     );
   }
+  let syncBusy = false;
   async function refreshSync() {
+    if (syncBusy) return;
     if (!state.desktop) {
       $("#sync-status").innerHTML = empty(
         "Open the desktop app to inspect your configured Home Manager repository.",
       );
       return;
     }
+    syncBusy = true;
+    $("#sync-refresh").disabled = true;
+    $("#sync-status").setAttribute("aria-busy", "true");
+    $("#stat-sync-detail").textContent = "Checking dotfiles…";
     try {
       const data = await run("sync_status");
       $("#stat-sync").textContent = data.changes.trim()
@@ -712,14 +733,22 @@ export function createFeatures(api) {
         e(String(err)) + " · Configure integrations in Settings.",
       );
       $("#stat-sync").textContent = "Not connected";
+      $("#stat-sync-detail").textContent = "Check integration settings";
+    } finally {
+      syncBusy = false;
+      $("#sync-refresh").disabled = false;
+      $("#sync-status").setAttribute("aria-busy", "false");
     }
   }
   async function refreshHealth() {
     if (healthBusy) return;
     healthBusy = true;
+    $("#health-time").textContent = "Checking system health…";
+    $("#health-panels").setAttribute("aria-busy", "true");
     $$("[data-health-refresh]").forEach((b) => (b.disabled = true));
     try {
       if (!state.desktop) {
+        $("#health-time").textContent = "Browser preview · Checks unavailable";
         $("#health-panels").innerHTML = empty(
           "System checks run in the desktop app.",
         );
@@ -729,9 +758,11 @@ export function createFeatures(api) {
       renderHealth();
       renderAttention();
     } catch (err) {
+      $("#health-time").textContent = `Health checks failed: ${err}. Previous results may be stale. Retry with Refresh.`;
       toast(`Health checks failed: ${err}`, true);
     } finally {
       healthBusy = false;
+      $("#health-panels").setAttribute("aria-busy", "false");
       $$("[data-health-refresh]").forEach((b) => (b.disabled = false));
     }
   }

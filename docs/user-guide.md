@@ -61,3 +61,17 @@ Linux defaults (respecting the platform's configured app directories):
 - Configuration backups: `~/.local/share/io.helixstack.commandcenter/config-backups/`.
 
 Activity and configuration backups are written with owner-only permissions. They remain local and can include command output or configuration content. There is no telemetry or cloud service.
+
+## Find and check settings
+
+Use **Search settings** to filter sections by their labels and help text. Clear the search, press Escape, or choose a section link to show all sections again. Filtering retains unsaved changes. **Start page** supports every workspace, including Toolbox, Activity, and Needs attention.
+
+In **System integrations**, choose **Check availability** to inspect the current draft without saving it. Checks report local path types, helper execute permissions, a Home Manager flake, and installed tools. They do not execute helpers, read password contents, unlock KWallet, or contact remote Restic repositories. A present path is not proof that a backup or configuration operation will succeed. Editing integration values clears previous results; run the check again after changes. Browser preview explains that native checks require the desktop app.
+
+## Stage and commit repository changes
+
+Open a repository's **Details** to select whole files and choose **Stage selected**, **Stage all**, or **Unstage selected**. Each action uses the existing command review and Activity system. Stage all includes new files and deletions while respecting Git's ignore rules. Unstage changes only the index; it leaves working files on disk.
+
+Review the **Staged diff**, enter a message, and choose **Review & commit**. A file can have both staged and unstaged edits; only staged contents are committed. Command Center checks the staged tree, current commit, and branch again before starting. If they changed since the preview, refresh Details and review again. Changes by other Git tools after that final check remain possible, so avoid concurrent Git operations in the same repository.
+
+A successful commit is local. Use **Push** separately to publish it. Normal Git hooks, identity and signing settings remain active. If hooks or signing require interactive input, use the repository Terminal button. Conflicts and active merge/rebase/cherry-pick workflows must be finished in the terminal or editor. Large staged diffs and non-UTF-8 filenames require terminal review. Commit messages remain as session drafts after errors or cancelled review; they are cleared after a successful app commit. Details refreshes after a staging or commit job completes while the dialog is open.

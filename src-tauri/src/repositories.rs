@@ -183,18 +183,13 @@ fn open_repository_inner(
 pub async fn repository_details(path: String) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let path = crate::platform::repo(&path)?;
-        let status = crate::platform::git(&path, &["status", "--porcelain=v1", "-z"])?;
-        let mut entries = status.split('\0').filter(|s| !s.is_empty());
-        let mut files = Vec::new();
-        while let Some(entry) = entries.next() {
-            if entry.len() < 3 { continue; }
-            let code = &entry[..2]; let file = &entry[3..];
-            let original = if code.contains('R') || code.contains('C') { entries.next() } else { None };
-            files.push(serde_json::json!({"status":code,"path":file,"original":original}));
-        }
+        let mut data = crate::git_changes::snapshot(&path)?;
         let log = crate::platform::git(&path, &["log", "-15", "--format=%h%x1f%s%x1f%ar"]).unwrap_or_default();
         let commits: Vec<_> = log.lines().filter_map(|line| { let v: Vec<_> = line.splitn(3,'\x1f').collect(); if v.len()==3 { Some(serde_json::json!({"hash":v[0],"subject":v[1],"age":v[2]})) } else { None } }).collect();
         let diff = crate::platform::git(&path, &["diff", "--no-ext-diff", "--no-textconv", "--stat", "HEAD"]).unwrap_or_default();
-        Ok(serde_json::json!({"files":files,"commits":commits,"diff":diff,"repository":inspect(&path)}))
+        data["commits"] = serde_json::json!(commits);
+        data["diff"] = serde_json::json!(diff);
+        data["repository"] = serde_json::json!(inspect(&path));
+        Ok(data)
     }).await.map_err(|e| e.to_string())?
 }

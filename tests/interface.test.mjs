@@ -406,3 +406,139 @@ test("nested Toolbox folders scope search, reveal results and navigate up withou
     x.dom.window.close();
   }
 });
+
+test('settings search leaves drafts intact and section links clear the filter', async () => {
+  const x = await setup();
+  try {
+    x.$('[data-view="settings"]').click();
+    x.$('#pref-name').value = 'Draft name';
+    x.$('#pref-name').dispatchEvent(new x.w.Event('input', { bubbles: true }));
+    x.$('#settings-search').value = 'backup';
+    x.$('#settings-search').dispatchEvent(new x.w.Event('input'));
+    assert.equal(x.$('#section-general').hidden, true);
+    assert.equal(x.$('#section-integrations').hidden, false);
+    assert.equal(x.$('#pref-name').value, 'Draft name');
+    x.$('#settings-search').value = 'no-such-setting';
+    x.$('#settings-search').dispatchEvent(new x.w.Event('input'));
+    assert.equal(x.$('#settings-no-results').hidden, false);
+    x.$('.settings-links a').click();
+    assert.equal(x.$('#section-general').hidden, false);
+    assert.equal(x.$('#settings-no-results').hidden, true);
+    assert.equal(x.calls.filter(c => c.command === 'save_settings').length, 0);
+  } finally { x.dom.window.close(); }
+});
+
+test('all navigation pages can be saved as the startup page and reopened', async () => {
+  const x = await setup();
+  try {
+    x.$('[data-view="settings"]').click();
+    const pages = [...x.$('#pref-startup').options].map(o => o.value);
+    for (const page of pages) {
+      assert.equal(normalize({ startupPage: page }).startupPage, page);
+    }
+    x.$('#pref-startup').value = 'toolbox';
+    x.$('#pref-startup').dispatchEvent(new x.w.Event('change', { bubbles: true }));
+    submit(x.w, x.$('#preferences-form'));
+    await settle();
+    const saved = x.calls.find(c => c.command === 'save_settings').args.settings;
+    assert.equal(saved.startupPage, 'toolbox');
+    const reopened = await setup({ load_settings: saved });
+    try { assert.equal(reopened.$('#toolbox-view').classList.contains('active-view'), true); }
+    finally { reopened.dom.window.close(); }
+  } finally { x.dom.window.close(); }
+});
+
+test('availability checks use drafts, report errors, and discard stale responses', async () => {
+  let resolve;
+  const x = await setup({ check_integrations: () => new Promise(r => { resolve = r; }) });
+  try {
+    x.$('#integration-dotfilesPath').value = '/draft';
+    x.$('#check-integrations').click();
+    await settle();
+    assert.equal(x.calls.find(c => c.command === 'check_integrations').args.integrations.dotfilesPath, '/draft');
+    assert.equal(x.$('#check-integrations').disabled, true);
+    x.$('#integration-dotfilesPath').value = '/new-draft';
+    x.$('#integration-dotfilesPath').dispatchEvent(new x.w.Event('input', { bubbles: true }));
+    resolve([{ label: 'Old path', message: 'Present', status: 'available' }]);
+    await settle();
+    assert.equal(x.$('#integration-check-results').textContent, '');
+    assert.match(x.$('#integration-check-status').textContent, /changed/);
+    x.responses.check_integrations = new Error('Unavailable fixture');
+    x.$('#check-integrations').click();
+    await settle();
+    assert.match(x.$('#integration-check-status').textContent, /Check failed/);
+    assert.equal(x.$('#check-integrations').disabled, false);
+    x.responses.check_integrations = [{ label: '<script>', message: 'Not configured', status: 'unknown' }];
+    x.$('#check-integrations').click();
+    await settle();
+    assert.equal(x.$('#integration-check-results script'), null);
+    assert.match(x.$('#integration-check-results').textContent, /Not configured/);
+    assert.equal(x.calls.filter(c => c.command === 'save_settings').length, 0);
+  } finally { x.dom.window.close(); }
+});
+
+test('health failures mark old results stale and allow retry', async () => {
+  const x = await setup();
+  try {
+    x.responses.system_health = new Error('offline');
+    x.$('[data-health-refresh]').click();
+    await settle();
+    assert.match(x.$('#health-time').textContent, /stale/);
+    assert.equal(x.$('#health-panels').getAttribute('aria-busy'), 'false');
+    assert.equal(x.$('[data-health-refresh]').disabled, false);
+  } finally { x.dom.window.close(); }
+});
+
+test('stage selection is reviewed, cancellation starts nothing, and paths remain literal', async () => {
+  const x = await setup({ repository_details: {
+    files: [{ path: 'a[1].txt', status: '??', staged: false, unstaged: true }], commits: [], stagedDiff: '', indexTree: 'empty', head: '', branchRef: 'refs/heads/main',
+  } });
+  try {
+    x.$('[data-view="repositories"]').click(); x.$('[data-details]').click(); await settle();
+    assert.equal(x.$('[data-git="stage"]').disabled, true);
+    x.$('[data-git-file]').click(); x.$('[data-git="stage"]').click(); await settle();
+    const request = x.calls.find(c => c.command === 'prepare_job').args.request;
+    assert.equal(request.action, 'stage');
+    assert.deepEqual(Array.from(request.files), ['a[1].txt']);
+    x.$('#review-cancel').click(); await settle();
+    assert.equal(x.calls.filter(c => c.command === 'start_job').length, 0);
+    assert.match(x.$('#git-change-status').textContent, /Cancelled/);
+  } finally { x.dom.window.close(); }
+});
+
+test('commit review carries the staged snapshot and never automatically pushes', async () => {
+  const x = await setup({ repository_details: {
+    files: [{ path: 'file', status: 'MM', staged: true, unstaged: true }], commits: [], stagedDiff: '+staged text', indexTree: 'tree-1', head: 'head-1', branchRef: 'refs/heads/main',
+  } });
+  try {
+    x.$('[data-view="repositories"]').click(); x.$('[data-details]').click(); await settle();
+    assert.match(x.$('#staged-diff').textContent, /staged text/);
+    assert.equal(x.$('#commit-staged').disabled, true);
+    x.$('#commit-message').value = 'Save selected changes';
+    x.$('#commit-message').dispatchEvent(new x.w.Event('input'));
+    submit(x.w, x.$('#commit-form')); await settle();
+    const request = x.calls.find(c => c.command === 'prepare_job').args.request;
+    assert.equal(request.action, 'commit'); assert.equal(request.message, 'Save selected changes');
+    assert.equal(request.indexTree, 'tree-1'); assert.equal(request.expectedHead, 'head-1');
+    assert.equal(request.branchRef, 'refs/heads/main');
+    submit(x.w, x.$('#review-form')); await settle();
+    assert.equal(x.calls.filter(c => c.command === 'start_job').length, 1);
+    assert.equal(x.calls.some(c => c.command === 'prepare_job' && c.args.request.action === 'push'), false);
+    x.$('#refresh-git-details').click(); await settle();
+    assert.equal(x.$('#commit-message').value, 'Save selected changes');
+  } finally { x.dom.window.close(); }
+});
+
+test('Git preparation errors stay visible and retain the commit message', async () => {
+  const x = await setup({ repository_details: {
+    files: [{ path: 'file', status: 'M ', staged: true, unstaged: false }], commits: [], stagedDiff: 'diff', indexTree: 'tree', head: 'head', branchRef: 'refs/heads/main',
+  }, prepare_job: new Error('Staged contents changed. Refresh Details.') });
+  try {
+    x.$('[data-view="repositories"]').click(); x.$('[data-details]').click(); await settle();
+    x.$('#commit-message').value = 'Keep this draft'; x.$('#commit-message').dispatchEvent(new x.w.Event('input'));
+    submit(x.w, x.$('#commit-form')); await settle();
+    assert.match(x.$('#git-change-status').textContent, /Staged contents changed/);
+    assert.equal(x.$('#commit-message').value, 'Keep this draft');
+    assert.equal(x.calls.some(c => c.command === 'start_job'), false);
+  } finally { x.dom.window.close(); }
+});

@@ -272,3 +272,21 @@ button:disabled { cursor:default; }
 :root[data-text-size=large] .module-panel, :root[data-text-size=large] .module-panel p, :root[data-text-size=large] .output, :root[data-text-size=large] .stack-form label { font-size:15px; }
 :root[data-theme=light] .wide-dialog { color:#172235; }
 @media(max-width:1100px) { .module-columns,.activity-layout { grid-template-columns:1fr; }.module-heading { flex-direction:column; }.integration-field { grid-template-columns:1fr; gap:10px; }:root[data-layout=list] .repo-extra-actions { grid-column:1; grid-row:auto; } }
+
+/* Settings discovery and diagnostics */
+[hidden] { display: none !important; }
+.settings-search { margin-bottom: 18px; flex-wrap: wrap; }
+#settings-search-status, #integration-check-status { color: var(--muted); font-size: 13px; }
+#integration-check-results { max-height: 360px; overflow: auto; }
+.integration-result { text-align: right; overflow-wrap: anywhere; }
+.integration-result.available { color: var(--green, #35bb95); }
+.integration-result.missing { color: var(--warning, #c88a30); }
+[aria-busy="true"] { cursor: progress; }
+
+.git-changes { margin: 20px 0; border-block: 1px solid var(--border); padding: 18px 0; }
+.git-file-list { max-height: 280px; overflow: auto; margin: 12px 0; }
+.git-file-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; }
+.git-file-row span { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.git-file-row small { color: var(--muted); }
+.git-file-row code { white-space: pre; }
+#commit-message { width: 100%; resize: vertical; }

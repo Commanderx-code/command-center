@@ -1,3 +1,5 @@
+import { version } from "../package.json";
+import { setupSettingsTools } from "./settings-tools.js";
 import { createFeatures } from "./features.js";
 import { needsAttention, statusParts, selectRepositories } from "./repository-view.js";
 import { defaults, normalize, readBrowserSettings } from "./preferences.js";
@@ -323,5 +325,7 @@ function bindEvents() {
 
 const features = createFeatures({state, $, $$, escapeHtml, toast, switchView, loadRepositories, renderRepositoryGrid});
 $("#preferences-form").inert = true;
+setupSettingsTools({ invoke, readIntegrations: features.readIntegrations });
+$(".version-badge").textContent = `Version ${version}`;
 bindEvents();
 void initialize();

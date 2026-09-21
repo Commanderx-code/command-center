@@ -1,6 +1,8 @@
 use tauri::Manager;
 mod configuration;
+mod diagnostics;
 mod health;
+mod git_changes;
 mod integrations;
 mod jobs;
 mod launcher;
@@ -37,6 +39,7 @@ pub fn run() {
             workspace::save_project,
             workspace::launch_project,
             integrations::detect_integrations,
+            diagnostics::check_integrations,
             integrations::sync_status,
             toolbox::toolbox_catalog,
             terminal::terminal_read,
