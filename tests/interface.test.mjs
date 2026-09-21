@@ -280,6 +280,10 @@ test("Toolbox filters unavailable actions, persists favorites and reviews the ca
   try {
     x.$('[data-view="toolbox"]').click();
     await settle();
+    assert.equal(x.w.document.querySelectorAll("[data-folder]").length, 1);
+    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 0);
+    x.$('[aria-label="Open folder Applications Setup"]').click();
+    x.$('[aria-label="Open folder Myfish Shell Setup"]').click();
     assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
     assert.match(x.$("#toolbox-source").textContent, /2 tools.*1 available/);
     assert.match(
@@ -294,13 +298,16 @@ test("Toolbox filters unavailable actions, persists favorites and reviews the ca
       toolboxCatalog.actions[0].id,
     );
     x.$("#toolbox-available").click();
-    assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 2);
+    x.$('[data-depth="0"]').click();
+    assert.equal(x.w.document.querySelectorAll("[data-folder]").length, 2);
+    x.$('[aria-label="Open folder Utilities"]').click();
     x.$('[data-tool="unavailable"]').click();
     assert.equal(x.$("#toolbox-run").disabled, true);
     assert.equal(
       x.calls.some((c) => c.command === "prepare_job"),
       false,
     );
+    x.$('[data-depth="0"]').click();
     x.$("#toolbox-favorites").click();
     assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
     x.$("#toolbox-terminal").value = "external";
@@ -342,7 +349,59 @@ test("Toolbox refresh failures remain visible and recover without replacing the 
     x.responses.toolbox_catalog = toolboxCatalog;
     x.$("#toolbox-refresh").click();
     await settle();
+    assert.equal(x.w.document.querySelectorAll("[data-folder]").length, 1);
+  } finally {
+    x.dom.window.close();
+  }
+});
+
+test("nested Toolbox folders scope search, reveal results and navigate up without launching", async () => {
+  const nested = (id, group) => ({
+    id,
+    name: id,
+    category: "Gaming",
+    groups: ["Emulators", group],
+    description: "Game emulator",
+    available: true,
+  });
+  const x = await setup({
+    toolbox_catalog: {
+      revision: "fixture",
+      actions: [nested("Dolphin", "Nintendo"), nested("Flycast", "Sega")],
+    },
+  });
+  try {
+    x.$('[data-view="toolbox"]').click();
+    await settle();
+    x.$('[aria-label="Open folder Gaming"]').click();
+    x.$('[aria-label="Open folder Emulators"]').click();
+    assert.equal(x.w.document.querySelectorAll("[data-folder]").length, 2);
+    x.$('[aria-label="Open folder Nintendo"]').click();
+    assert.equal(x.$('[data-tool="Flycast"]'), null);
+    assert.equal(
+      x.$('#toolbox-breadcrumbs [aria-current="page"]').textContent,
+      "Nintendo",
+    );
+    x.$("#toolbox-back").click();
+    assert.equal(x.w.document.querySelectorAll("[data-folder]").length, 2);
+    x.$("#toolbox-search").value = "Flycast";
+    x.$("#toolbox-search").dispatchEvent(new x.w.Event("input"));
     assert.equal(x.w.document.querySelectorAll("[data-tool]").length, 1);
+    x.$("#toolbox-reveal").click();
+    assert.equal(
+      x.$('#toolbox-breadcrumbs [aria-current="page"]').textContent,
+      "Sega",
+    );
+    assert.equal(x.$("#toolbox-search").value, "");
+    x.$('[data-depth="1"]').click();
+    assert.equal(
+      x.$('#toolbox-breadcrumbs [aria-current="page"]').textContent,
+      "Gaming",
+    );
+    assert.equal(
+      x.calls.some((c) => ["prepare_job", "start_job"].includes(c.command)),
+      false,
+    );
   } finally {
     x.dom.window.close();
   }

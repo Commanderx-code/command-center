@@ -4,7 +4,7 @@ A local Linux workstation dashboard built with Tauri, Rust, and JavaScript. Vers
 
 ## What works
 
-- **Toolbox:** all 215 bundled actions across Applications Setup, Gaming, Security, System Setup, and Utilities. Search descriptions and groups, filter by category or availability, keep favorites, and choose Myfish, dotfiles, or application setups through graphical selectors. Run one reviewed action at a time in the embedded terminal or your preferred external terminal.
+- **Toolbox:** all 215 bundled actions across Applications Setup, Gaming, Security, System Setup, and Utilities. Browse the same folders and nested submenus as the TUI, navigate with breadcrumbs or Up, search within a folder and its descendants, filter by availability, keep favorites, and choose Myfish, dotfiles, or application setups through graphical selectors. Run one reviewed action at a time in the embedded terminal or your preferred external terminal.
 - **Interactive terminal:** real PTY input, password prompts, ANSI menus, resizing, cancellation, and exit status. Terminal output stays in a bounded 1 MB memory buffer and is never written to Activity. Save output explicitly if you need a private local transcript. The embedded terminal supports text/ANSI; use an external terminal for image graphics.
 
 - **Repositories:** scan configurable roots, inspect branches and local changes, search/filter/sort, favorites, groups, changed-file lists, recent commits, and editor/terminal/remote launchers. Fetch updates remote-tracking information; pull requires a clean tracked branch and uses fast-forward only; push targets that branch's upstream without force or automatic tags.
@@ -59,6 +59,8 @@ On the first desktop launch without a configured dotfiles integration, Command C
 ## Toolbox integration
 
 The desktop links directly to `linutil_core` from Commander Toolbox at commit `880b79c26bd475af018d98ae7dea5d206a0b211d`. Its embedded script tree, relative imports, interpreter selection, and preconditions remain shared with the TUI. A worker owns the extracted tree for the lifetime of the app. Compatibility is checked again during review and immediately before execution. There is no runtime download of the catalog; individual scripts can download their normal dependencies.
+
+Open a category folder, then its subfolders to reach a tool. Category buttons are shortcuts to the top-level folders. Search and favorites show matching tools within the current folder; use **All tools** to search the entire catalog. **Open containing folder** takes a search result back to its menu.
 
 Use **Toolbox → Quick setup** to select a Myfish shell, dotfiles configuration, or application, then **Review & run**. Installer-specific choices and confirmations remain in the original script. **Run tools in** selects the embedded terminal or the external terminal configured in Settings. Return to a session from **Terminal** or its Activity entry. Only the latest session buffer remains available; it is lost on app exit. External terminal output stays external.
 

@@ -32,6 +32,31 @@ export function setupTools(actions, workflow) {
   );
 }
 
+export function toolFolder(tool) {
+  return [tool.category, ...tool.groups];
+}
+
+// Build each menu from the shared catalog's ordered ancestry. Filtering first
+// keeps empty folders hidden and counts consistent with availability/favorites.
+export function browseTools(actions, path = [], recursive = false) {
+  const descendants = actions.filter((tool) =>
+    path.every((part, index) => toolFolder(tool)[index] === part),
+  );
+  const folders = new Map();
+  const tools = [];
+  for (const tool of descendants) {
+    const parent = toolFolder(tool);
+    if (recursive || parent.length === path.length) tools.push(tool);
+    else {
+      const name = parent[path.length];
+      if (!folders.has(name))
+        folders.set(name, { name, path: [...path, name], count: 0 });
+      folders.get(name).count++;
+    }
+  }
+  return { folders: [...folders.values()], tools, count: descendants.length };
+}
+
 export function taskLabels(flags = "") {
   const labels = {
     D: "Disk changes (privileged)",
