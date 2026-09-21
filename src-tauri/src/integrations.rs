@@ -80,6 +80,8 @@ pub fn detect_integrations() -> Integrations {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Request {
+    pub tool_id: String,
+    pub terminal_mode: String,
     pub action: String,
     pub path: String,
     pub snapshot: String,
@@ -90,6 +92,7 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
+    pub interactive: bool,
     pub id: String,
     pub title: String,
     pub program: String,
@@ -102,8 +105,9 @@ pub struct Plan {
     pub create_target: Option<String>,
 }
 impl Plan {
-    fn new(title: &str, program: &str, args: Vec<String>, cwd: &Path) -> Self {
+    pub(crate) fn new(title: &str, program: &str, args: Vec<String>, cwd: &Path) -> Self {
         Self {
+            interactive: false,
             id: String::new(),
             title: title.into(),
             program: program.into(),

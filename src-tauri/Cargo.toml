@@ -21,6 +21,8 @@ walkdir = "2"
 open = "5"
 
 libc = "0.2"
+portable-pty = "0.9"
+linutil_core = { git = "https://github.com/Commanderx-code/commander-toolbox.git", rev = "880b79c26bd475af018d98ae7dea5d206a0b211d" }
 
 [dev-dependencies]
 tempfile = "3"
