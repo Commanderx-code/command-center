@@ -15,7 +15,7 @@ Git file diffs, branches, stashes, branch publishing, service controls and audit
 
 ### Linux downloads
 
-The `.deb` and `.rpm` assets target **x86_64** and require **glibc 2.39+, GTK 3, WebKitGTK 4.1, and the platform's AppIndicator library**. Notifications additionally use `notify-send`. Install your downloaded package with `sudo apt install ./command-center_0.4.0_amd64.deb` or `sudo dnf install ./command-center-0.4.0-1.x86_64.rpm` on a compatible distribution.
+The `.deb` and `.rpm` assets target **x86_64** and require **glibc 2.39+, GTK 3, WebKitGTK 4.1, and the platform's AppIndicator library**. Notifications additionally use `notify-send`. File restores require Restic 0.17+; older versions receive a compatibility error before a restore starts. Install your downloaded package with `sudo apt install ./command-center_0.4.0_amd64.deb` or `sudo dnf install ./command-center-0.4.0-1.x86_64.rpm` on a compatible distribution.
 
 Download `SHA256SUMS` beside the package and run `sha256sum --check --ignore-missing SHA256SUMS`.
 

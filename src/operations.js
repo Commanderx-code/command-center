@@ -4,6 +4,7 @@ import {
   stepTypes,
   toolFolderItems,
   advanceRun,
+  restoreRun,
   timelineFilter,
 } from "./operations-model.js";
 export function createOperations({
@@ -69,13 +70,9 @@ export function createOperations({
     }
   };
   try {
-    current = JSON.parse(
-      localStorage.getItem("command-center-workflow-run") || "null",
+    current = restoreRun(
+      JSON.parse(localStorage.getItem("command-center-workflow-run") || "null"),
     );
-    if (current && !["succeeded", "stopped"].includes(current.status)) {
-      current.status = "interrupted";
-      current.jobId = null;
-    }
   } catch {
     current = null;
   }
@@ -677,12 +674,14 @@ export function createOperations({
   $("#notification-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     try {
+      const preferences = {};
+      for (const key of ["enabled", "failures", "completions", "health"])
+        preferences[key] = $("#notice-" + key).checked;
+      preferences.quietStart = Number($("#notice-start").value);
+      preferences.quietEnd = Number($("#notice-end").value);
       await ensure();
       const next = structuredClone(collection);
-      for (const key of ["enabled", "failures", "completions", "health"])
-        next.notifications[key] = $("#notice-" + key).checked;
-      next.notifications.quietStart = Number($("#notice-start").value);
-      next.notifications.quietEnd = Number($("#notice-end").value);
+      next.notifications = preferences;
       await save(next);
       $("#notice-status").textContent = "Notification preferences saved.";
     } catch (err) {

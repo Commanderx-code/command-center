@@ -378,6 +378,10 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
                 plan.explanation = "Check repository structure and metadata. This does not perform a full read of every data block.".into();
             }
             "restore" => {
+                let (ok, help, error) = p::output(Command::new("restic").args(["restore", "--help"]), 15)?;
+                if !ok || !help.contains("--overwrite") || !help.contains("--verify") {
+                    return Err(format!("File restore requires Restic 0.17 or newer with --overwrite and --verify support. Update Restic before restoring. {error}"));
+                }
                 snapshot_id(&r.snapshot)?;
                 let target = p::expand(&r.target)?;
                 validate_restore_target(&target)?;

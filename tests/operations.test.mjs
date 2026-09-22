@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   advanceRun,
+  restoreRun,
   toolFolderItems,
   timelineFilter,
   weeklyRecipe,
@@ -74,4 +75,20 @@ test("starter workflow checks readiness before backup and contains no unattended
     weeklyRecipe().steps.map((s) => s.request.action),
     ["backup-ready", "backup", "restic-check", "health-check"],
   );
+});
+
+test("corrupted progress is ignored and unfinished work never resumes automatically", () => {
+  assert.equal(restoreRun({ name: "Broken", rows: [], index: 0 }), null);
+  assert.equal(restoreRun({ name: "Broken", rows: [{}], index: 0 }), null);
+  const restored = restoreRun({
+    name: "Backup",
+    index: 0,
+    status: "running",
+    jobId: "old",
+    rows: [
+      { name: "Backup", request: { action: "backup" }, status: "running" },
+    ],
+  });
+  assert.equal(restored.status, "interrupted");
+  assert.equal(restored.jobId, null);
 });

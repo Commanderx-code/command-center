@@ -79,3 +79,5 @@ The browser preview uses sample repositories and configurations. It cannot run G
 After installation, open **Settings → System integrations**. Command Center can detect an existing dotfiles machine configuration, backup helpers, and Ghostty/Fastfetch source paths. Review the detected paths and save your settings.
 
 Git, Home Manager, Restic, Ghostty, Fastfetch, and backup helpers are used when installed and configured. They are not all required to open the app. See the [user guide](user-guide.md#connect-your-setup) for each integration.
+
+File restores require **Restic 0.17 or newer** for its no-overwrite protection; Command Center checks support before preparing a restore. Some distributions ship an older Restic independently of Command Center.

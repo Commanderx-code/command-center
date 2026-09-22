@@ -25,6 +25,13 @@ jobs:
           components: clippy
       - name: Install build and smoke-test dependencies
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf restic rpm libarchive-tools xvfb dbus-x11 libnotify-bin
+      - name: Install checksum-pinned Restic for restore integration tests
+        run: |
+          curl -fsSL https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2 -o /tmp/restic-ci.bz2
+          echo 'f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c  /tmp/restic-ci.bz2' | sha256sum -c -
+          bzip2 -dk /tmp/restic-ci.bz2
+          sudo install -m755 /tmp/restic-ci /usr/local/bin/restic
+          restic version
       - run: npm ci
       - run: npm run check && npm test && npm run test:rust
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
@@ -44,7 +51,7 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Install tools
-        run: dnf install -y git nodejs npm rust cargo gcc gcc-c++ pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel rpm-build python3 binutils libarchive xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon shadow-utils libnotify
+        run: dnf install -y git nodejs npm rust cargo gcc gcc-c++ pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel rpm-build python3 binutils bsdtar xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon shadow-utils libnotify restic
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

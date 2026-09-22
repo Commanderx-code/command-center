@@ -95,3 +95,33 @@ export function timelineFilter(rows, query, category) {
       ),
   );
 }
+
+export function restoreRun(value) {
+  if (
+    !value ||
+    typeof value.name !== "string" ||
+    !Array.isArray(value.rows) ||
+    !value.rows.length ||
+    value.rows.length > 30 ||
+    !Number.isInteger(value.index) ||
+    value.index < 0 ||
+    value.index > value.rows.length ||
+    value.rows.some(
+      (row) =>
+        typeof row.name !== "string" ||
+        typeof row.status !== "string" ||
+        !row.request ||
+        !stepTypes[row.request.action],
+    )
+  )
+    return null;
+  if (value.index === value.rows.length && value.status !== "succeeded")
+    return null;
+  return {
+    ...value,
+    jobId: null,
+    status: ["succeeded", "stopped"].includes(value.status)
+      ? value.status
+      : "interrupted",
+  };
+}
