@@ -1,3 +1,5 @@
+import { createToolboxUpdates } from './toolbox-updates.js';
+import { createReleases } from './releases.js';
 import { createSystemWorkflows } from "./system-workflows.js";
 import { createConfigHistory } from "./config-history.js";
 import { renderBackupOverview } from "./backup-overview.js";
@@ -140,7 +142,7 @@ export function createFeatures(api) {
      </section>
      <section id="backup-view" class="view">${head("Protect & recover", "Backup & Restore", "Your existing backup workflow, with snapshots and recovery checks in one place.", button("Refresh health", "data-health-refresh"))}
        <div id="backup-summary" class="status-strip">Refresh health to read local backup records.</div>
-       <div class="panel module-panel"><div class="button-row">${button("Personal backup", 'data-job="backup"', true)}${button("Full recovery backup", 'data-job="backup-full"')}${button("Check repository", 'data-job="restic-check"')}${button("Load snapshots", 'id="load-snapshots"')}</div><p class="settings-help">Full backup opens your terminal for encryption prompts. Backup helpers use their own machine settings. The Restic fields in Settings control snapshot browsing and restores. Snapshot browsing can ask KWallet to unlock. Checks verify repository metadata; recovery checks below do not prove a backup is restorable.</p></div>
+       <div class="panel module-panel"><div class="button-row">${button("Personal backup", 'data-job="backup"', true)}${button("Full recovery backup", 'data-job="backup-full"')}${button("Test repository access", 'data-job="restic-access"')}${button("Check repository", 'data-job="restic-check"')}${button("Load snapshots", 'id="load-snapshots"')}</div><p class="settings-help">Full backup opens your terminal for encryption prompts. Backup helpers use their own machine settings. The Restic fields in Settings control snapshot browsing and restores. Snapshot browsing can ask KWallet to unlock. Checks verify repository metadata; recovery checks below do not prove a backup is restorable.</p></div>
        <div class="module-columns"><section class="panel module-panel"><h3>Snapshots</h3><div id="snapshots">${empty("Load snapshots to browse your backup repository.")}</div></section>
        <section class="panel module-panel"><h3>Snapshot browser</h3><div class="button-row"><input id="snapshot-directory" aria-label="Snapshot directory" value="/">${button("Browse", 'id="browse-snapshot"')}</div><div id="snapshot-files">${empty("Select a snapshot first.")}</div>
        <form id="restore-form" class="stack-form"><label>Selected snapshot<input id="restore-snapshot" readonly></label><label>Include path or pattern <small>Blank restores the whole snapshot. Restic patterns may match multiple files.</small><input id="restore-include" placeholder="/home/commander/Documents"></label><label>New destination folder <small>Must be a new folder beneath your home; its parent must exist.</small><input id="restore-target" required placeholder="~/Restore-2026-09-21"></label><button class="primary-button" type="submit">Review restore</button></form></section></div>
@@ -1124,6 +1126,8 @@ export function createFeatures(api) {
   mount();
   const toolbox = createToolbox({ ...api, run, guard, review, action });
   const systemWorkflows = createSystemWorkflows({...api,run,action});
+  createReleases({$,run,state});
+  createToolboxUpdates({...api,run,action});
   const configHistory = createConfigHistory({$,run,review,getDocument:()=>configDocument,getKind:()=>configKind,setDraft(content){$("#config-text").value=content;$("#config-state").textContent="Unsaved restored draft";renderConfigControls();}});
   return {
     initialize,

@@ -22,6 +22,8 @@ console.log(
 );
 
 const cargo = await readFile(new URL("src-tauri/Cargo.toml", root), "utf8");
+if (cargo.match(/\[package\][\s\S]*?\nversion = "([^"]+)"/)?.[1] !== pkg.version)
+  throw new Error("Cargo and frontend versions differ");
 const toolbox = await readFile(
   new URL("src-tauri/src/toolbox.rs", root),
   "utf8",

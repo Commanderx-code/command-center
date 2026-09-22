@@ -1,3 +1,6 @@
+export function backupRecordFailed(record) {
+  return record?.success===false || (typeof record?.exit_code==='number'&&record.exit_code!==0) || ['failed','failure','error','canceled','cancelled'].includes(String(record?.status||'').toLowerCase());
+}
 export function cleanOutput(value = "") {
   return value
     .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
@@ -13,6 +16,7 @@ export function backupState(health, maxHours = 24, now = Date.now()) {
       detail: backup?.error || "Refresh system health",
     };
   const record = backup.data?.jobs?.backup;
+  if(backupRecordFailed(record))return {label:'Failed',attention:true,detail:'Latest backup record reports failure; inspect its logs.'};
   const date = Date.parse(record?.completed_at);
   if (!Number.isFinite(date))
     return {

@@ -1,6 +1,6 @@
 {
   "name": "command-center",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "A Linux control deck for repositories, configuration, backup, and recovery.",
@@ -13,7 +13,10 @@
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "desktop:build": "tauri build --no-bundle",
     "desktop:install": "npm run desktop:build && node scripts/install-desktop.mjs",
-    "desktop:package": "tauri build --bundles deb,rpm"
+    "desktop:package": "tauri build --bundles deb,rpm",
+    "desktop:update": "bash scripts/update-desktop.sh",
+    "release:draft": "node scripts/release-draft.mjs",
+    "toolbox:pin": "node scripts/pin-toolbox.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

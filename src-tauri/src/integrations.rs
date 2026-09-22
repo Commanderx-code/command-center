@@ -201,6 +201,7 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
     if ["stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch", "stash-create", "stash-apply", "branch-publish"].contains(&r.action.as_str()) {
         return crate::git_changes::plan(r);
     }
+    if r.action == "tool-update" { return crate::toolbox_updates::plan(r); }
     if r.action == "custom" { return crate::custom_actions::plan(r, s); }
     let i = &s.integrations;
     if ["fetch", "pull", "push", "sync-fetch", "sync-pull"].contains(&r.action.as_str()) {
@@ -314,6 +315,10 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
         return Ok(plan);
     }
     if ["backup", "backup-full"].contains(&r.action.as_str()) {
+        let health=crate::health::backup_report(s);
+        if health["data"]["drive_mounted"]==false {
+            return Err("Backup helper reports the backup drive is disconnected. Connect it and refresh health.".into());
+        }
         let full = r.action == "backup-full";
         let script = p::expand(if full {
             &i.full_backup_script
@@ -336,9 +341,10 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
         plan.timeout_seconds = 24 * 3600;
         plan.external_terminal = full;
         plan.explanation = if full { "Run your existing full-backup workflow in your selected terminal for encryption prompts. Completion is recorded here; private terminal input and output are not captured." } else { "Run your existing personal backup helper, including its verification steps. KWallet may ask you to unlock it." }.into();
+        if health["available"]!=true {plan.explanation.push_str(" Backup health is unavailable; drive readiness could not be verified.");}
         return Ok(plan);
     }
-    if ["snapshots", "snapshot-files", "restic-check", "restore"].contains(&r.action.as_str()) {
+    if ["snapshots", "snapshot-files", "restic-check", "restic-access", "restore"].contains(&r.action.as_str()) {
         let mut args = restic_args(i)?;
         let mut plan = Plan::new("Restic", "restic", vec![], &p::home());
         match r.action.as_str() {
@@ -358,6 +364,11 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
                 }
                 args.extend(vecs(&["ls", "--json", &r.snapshot, dir]));
                 plan.title = "Browse snapshot files".into();
+            }
+            "restic-access" => {
+                args.extend(vecs(&["cat", "config"]));
+                plan.title = "Test Restic repository access".into();
+                plan.explanation = "Read and decrypt repository configuration using the Restic settings. KWallet may request an unlock. Success confirms access now, not backup integrity or your backup helper’s separate configuration. No backup or restore is performed.".into();
             }
             "restic-check" => {
                 args.push("check".into());
@@ -390,7 +401,7 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
             _ => unreachable!(),
         }
         plan.args = args;
-        plan.timeout_seconds = 24 * 3600;
+        plan.timeout_seconds = if r.action=="restic-access" {120} else {24 * 3600};
         if plan.explanation.is_empty() {
             plan.explanation = "Read backup metadata using your configured Restic credentials. KWallet may request an unlock.".into();
         }

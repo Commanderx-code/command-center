@@ -11,19 +11,32 @@ prop() { "${ctl[@]}" show --property="$2" --value -- "$1"; }
 if (( $# == 0 )); then
   echo 'Audit only: inactive does not mean unused. No changes will be made.'
   echo 'Check descriptions, timers/sockets, dependencies, and logs before disabling anything.'
-  printf '\n%-60s %-14s %s\n' SERVICE STATE ENABLEMENT
   files=$("${ctl[@]}" list-unit-files --type=service --no-legend --full)
+  review=(); failed=(); other=(); errors=0
   while read -r unit enabled rest; do
     [[ "$unit" == *.service && "$unit" != *@.service ]] || continue
-    active=$(prop "$unit" ActiveState) || { echo "Cannot inspect $unit" >&2; continue; }
-    if [[ "$active" == inactive || "$active" == failed ]]; then
-      printf '%-60s %-14s %s\n' "$unit" "$active" "$enabled"
-    fi
+    active=$(prop "$unit" ActiveState) || { echo "Cannot inspect $unit" >&2; errors=$((errors+1)); continue; }
+    [[ "$active" == inactive || "$active" == failed ]] || continue
+    description=$(prop "$unit" Description) || description='Description unavailable'
+    triggers=$(prop "$unit" TriggeredBy) || triggers='Unknown'
+    entry="$unit | $active | $enabled | $description | Triggers: ${triggers:-none reported}"
+    if [[ "$active" == failed ]]; then failed+=("$entry")
+    elif [[ "$enabled" == enabled ]]; then review+=("$entry")
+    else other+=("$entry"); fi
   done <<< "$files"
-  echo
-  echo 'To review one enabled, inactive service for disabling:'
-  printf 'bash service-cleanup.sh %q --disable NAME.service\n' "$scope"
-  [[ "$scope" != system ]] || echo 'For system changes, run that command with sudo after reviewing this script.'
+  printf '\nEnabled but inactive — review, not a removal recommendation (%s)\n' "${#review[@]}"
+  if (( ${#review[@]} )); then printf '%s\n' "${review[@]}"; else echo 'No enabled inactive services found.'; fi
+  printf '\nFailed — investigate logs (%s)\n' "${#failed[@]}"
+  if (( ${#failed[@]} )); then printf '%s\n' "${failed[@]}"; else echo 'No failed services found.'; fi
+  printf '\nDisabled, on-demand, or managed elsewhere — informational (%s)\n' "${#other[@]}"
+  if (( ${#other[@]} )); then printf '%s\n' "${other[@]}"; fi
+  echo 'No service is confirmed unused by this audit. Inactive one-shot jobs may have completed normally.'
+  if (( errors )); then printf 'Audit incomplete: %s services could not be inspected.\n' "$errors"; fi
+  if (( ${#review[@]} )); then
+    echo 'To inspect one entry, including its reverse dependencies:'
+    printf 'bash service-cleanup.sh %q --disable NAME.service\n' "$scope"
+    [[ "$scope" != system ]] || echo 'System disabling requires sudo after review.'
+  fi
   exit 0
 fi
 [[ $# == 2 && "$1" == --disable ]] || { echo 'Expected --disable NAME.service' >&2; exit 2; }

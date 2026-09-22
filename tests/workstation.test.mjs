@@ -32,7 +32,7 @@ test('backup overview distinguishes disconnected, unknown, remote and successful
   const health={backup:{available:true,data:{drive_mounted:false,jobs:{backup:{completed_at:'2026-09-21T11:00:00Z'}}}},backupHelpers:{personal:true,full:true}};
   const off=backupOverview(health,config,now);assert.match(off.drive,/Disconnected/);assert.equal(off.personal,false);assert.equal(off.completedAt,now-3600000);
   const unknown=backupOverview({...health,backup:{available:false}},config,now);assert.match(unknown.drive,/unknown/);assert.equal(unknown.completedAt,null);
-  const remote=backupOverview(health,{...config,resticRepository:'sftp:host:/backup'},now);assert.match(remote.drive,/Remote/);assert.equal(remote.personal,true);
+  const remote=backupOverview(health,{...config,resticRepository:'sftp:host:/backup'},now);assert.match(remote.drive,/Remote/);assert.equal(remote.personal,false);
   health.backup.data.drive_mounted=true;assert.equal(backupOverview(health,config,now).personal,true);
 });
 

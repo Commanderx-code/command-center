@@ -4,6 +4,17 @@ Release downloads and full notes are available on [GitHub Releases](https://gith
 
 ## Unreleased
 
+- Add Toolbox catalog comparison and a tested pin/rebuild workflow with rollback on validation failure.
+- Add package-source update checks and reviewed full-upgrade, Topgrade, Garuda/Arch, and Flatpak workflows.
+
+## 0.4.0
+
+- Group service audit results and explain enablement/activation.
+- Add backup readiness details, explicit repository authentication tests, and fresh disconnected-drive checks before backups.
+- Add installed-version display, on-demand stable-release checks, a reviewed source updater, and a draft release workflow.
+- Treat failed backup-health exits and explicitly failed backup records as failures.
+
+
 - Add service state filters and an exportable audit-first cleanup helper with individually confirmed disabling and re-enable instructions.
 
 - Added user-service controls, system-service inspection, and journal views.

@@ -35,8 +35,9 @@ fn list(scope:&str, kind:&str) -> Result<Vec<Value>,String> {
     let files=output("systemctl",&args)?;
     for line in files.lines(){
         let cols:Vec<_>=line.split_whitespace().collect();
-        if cols.len()<2 || cols[0].contains("@.") || rows.iter().any(|row|row["unit"]==cols[0]){continue;}
-        rows.push(json!({"unit":cols[0],"load":"installed","active":"not loaded","sub":cols[1],"description":"Installed unit"}));
+        if cols.len()<2 || cols[0].contains("@."){continue;}
+        if let Some(row)=rows.iter_mut().find(|row|row["unit"]==cols[0]) {row["enablement"]=json!(cols[1]);continue;}
+        rows.push(json!({"unit":cols[0],"load":"installed","active":"not loaded","enablement":cols[1],"sub":cols[1],"description":"Installed unit"}));
     }
     rows.sort_by(|a,b|a["unit"].as_str().cmp(&b["unit"].as_str()));
     Ok(rows)

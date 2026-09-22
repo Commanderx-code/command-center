@@ -657,3 +657,40 @@ test('command palette searches dynamically and does not interrupt a pending revi
     x.$('#review-cancel').click();await settle();
   }finally{x.dom.window.close();}
 });
+
+test('release checks are explicit, handle missing releases and failures, and never execute an updater', async()=>{
+  const x=await setup({release_info:{installed:'0.4.0'},check_release:{installed:'0.4.0',release:null},export_update_helper:'/tmp/update-desktop.sh'});
+  try{
+    assert.equal(x.calls.some(c=>c.command==='check_release'),false);
+    x.$('#release-check').click();await settle();assert.match(x.$('#release-status').textContent,/No published/);
+    x.responses.check_release={installed:'0.4.0',release:{tag:'v0.5.0',notes:'<script>example</script>'}};
+    x.$('#release-check').click();await settle();assert.match(x.$('#release-command').textContent,/v0.5.0/);assert.equal(x.$('#release-notes script'),null);
+    x.$('#update-export').click();await settle();assert.match(x.$('#update-export-status').textContent,/does not run/);
+    x.responses.check_release=new Error('offline');x.$('#release-check').click();await settle();assert.equal(x.$('#release-command').textContent,'');assert.match(x.$('#release-status').textContent,/offline/);
+    assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+  }finally{x.dom.window.close();}
+});
+
+test('Restic access test requires review and cancellation starts no job',async()=>{
+  const x=await setup();try{
+    x.$('[data-job="restic-access"]').click();await settle();
+    assert.equal(x.calls.find(c=>c.command==='prepare_job').args.request.action,'restic-access');
+    assert.equal(x.$('#review-dialog').open,true);
+    x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+  }finally{x.dom.window.close();}
+});
+
+test('Toolbox update checks stay separate from catalog refresh and updates require review',async()=>{
+ const x=await setup({toolbox_update_checks:{checkedAt:Date.now(),groups:[{name:'Arch',note:'Cached',check:{state:'results',output:'<script>not markup</script>'}}],workflows:{fullUpgrade:true,topgrade:true},manual:'Source builds need manual checks'},toolbox_catalog_update:{bundled:'a'.repeat(40),latest:'b'.repeat(40)}});
+ try{
+  assert.equal(x.calls.some(c=>c.command==='toolbox_update_checks'||c.command==='toolbox_catalog_update'),false);
+  x.$('#installed-update-check').click();await settle();assert.equal(x.$('#installed-update-groups script'),null);
+  x.$('[data-update-workflow="full-upgrade"]').click();await settle();
+  const request=x.calls.find(c=>c.command==='prepare_job').args.request;
+  assert.equal(request.action,'tool-update');assert.equal(request.toolId,'full-upgrade');assert.equal(request.terminalMode,'embedded');
+  x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+  x.$('#catalog-update-check').click();await settle();assert.match(x.$('#catalog-update-command').textContent,/npm run toolbox:pin/);
+  x.responses.toolbox_catalog_update=new Error('offline');x.$('#catalog-update-check').click();await settle();assert.equal(x.$('#catalog-update-command').textContent,'');assert.equal(x.$('#catalog-update-compare').disabled,true);
+  x.responses.toolbox_update_checks=new Error('unavailable');x.$('#installed-update-check').click();await settle();assert.equal(x.$('#installed-update-actions').children.length,0);assert.match(x.$('#installed-update-status').textContent,/unavailable/);
+ }finally{x.dom.window.close();}
+});

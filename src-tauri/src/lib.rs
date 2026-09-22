@@ -2,6 +2,7 @@ use tauri::Manager;
 mod configuration;
 mod diagnostics;
 mod health;
+mod releases;
 mod system_tools;
 mod git_changes;
 mod custom_actions;
@@ -13,6 +14,7 @@ mod repositories;
 mod settings;
 mod terminal;
 mod toolbox;
+mod toolbox_updates;
 mod workspace;
 
 use repositories::{discover_repositories, open_repository};
@@ -46,6 +48,9 @@ pub fn run() {
             diagnostics::check_integrations,
             integrations::sync_status,
             toolbox::toolbox_catalog,
+            toolbox_updates::toolbox_update_checks,
+            toolbox_updates::toolbox_catalog_update,
+            toolbox_updates::toolbox_compare,
             terminal::terminal_read,
             terminal::terminal_write,
             terminal::terminal_resize,
@@ -67,6 +72,10 @@ pub fn run() {
             system_tools::system_inventory,
             system_tools::export_inventory,
             system_tools::export_service_cleanup,
+            releases::release_info,
+            releases::check_release,
+            releases::open_releases,
+            releases::export_update_helper,
             health::system_health,
             health::recovery_notes
         ])
