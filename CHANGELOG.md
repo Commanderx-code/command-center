@@ -2,18 +2,23 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
-## Unreleased
+## [0.4.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.4.0) — 2026-09-22
+
+- Added saved maintenance workflows with per-step command review, progress, failure stops, and explicit retries.
+- Added local machine setup profiles with repository clones, Toolbox installers, optional presence checks, and Home Manager source overrides.
+- Added personal Toolbox folders, prerequisites, and literal structured inputs.
+- Added file recovery verification against recorded SHA-256 baselines using Restic.
+- Added a searchable change timeline combining jobs and configuration backups.
+- Added opt-in task/health notifications, quiet hours, and system tray controls.
+- Added Ubuntu/Fedora package build, installation, and launch CI, package validation, and an unsubmitted Arch build recipe.
 
 - Add Toolbox catalog comparison and a tested pin/rebuild workflow with rollback on validation failure.
 - Add package-source update checks and reviewed full-upgrade, Topgrade, Garuda/Arch, and Flatpak workflows.
-
-## 0.4.0
 
 - Group service audit results and explain enablement/activation.
 - Add backup readiness details, explicit repository authentication tests, and fresh disconnected-drive checks before backups.
 - Add installed-version display, on-demand stable-release checks, a reviewed source updater, and a draft release workflow.
 - Treat failed backup-health exits and explicitly failed backup records as failures.
-
 
 - Add service state filters and an exportable audit-first cleanup helper with individually confirmed disabling and re-enable instructions.
 

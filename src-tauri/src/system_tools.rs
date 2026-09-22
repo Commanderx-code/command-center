@@ -79,7 +79,7 @@ pub fn plan(r:&Request,s:&Settings)->Result<Plan,String>{
     if r.scope!="user" {return Err("Service changes are limited to your user services".into());}
     unit_name(&r.unit)?;
     let verb=match r.action.as_str(){"service-start"=>"start","service-stop"=>"stop","service-restart"=>"restart","timer-enable"=>"enable","timer-disable"=>"disable",_=>return Err("Unsupported service action".into())};
-    if verb=="enable"||verb=="disable" {if !r.unit.ends_with(".timer"){return Err("Select a timer".into());}}
+    if (verb=="enable"||verb=="disable") && !r.unit.ends_with(".timer"){return Err("Select a timer".into());}
     let loaded=output("systemctl",&["--user","show","--property=LoadState","--value",&r.unit])?;
     if loaded.trim()!="loaded"{return Err("Unit is not loaded; refresh the service list".into());}
     let mut args=vec!["--user".into(),verb.into()];

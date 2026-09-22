@@ -30,6 +30,14 @@ git push origin v0.4.0
 npm run release:draft -- v0.4.0
 ```
 
-The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag, runs checks, tests, and the desktop build, then creates an **unpublished** GitHub release using docs/release-notes.md. It does not push tags or publish the draft. Review and publish on GitHub after testing the app on your machine. GitHub supplies source archives automatically; this workflow does not claim that a build on Garuda is portable across Linux distributions.
+The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag, runs checks, tests, and the package build, then creates an **unpublished** GitHub release using docs/release-notes.md. It attaches validated `.deb` and `.rpm` packages plus `SHA256SUMS`. It does not push tags or publish the draft. Review and publish on GitHub after testing the app on your machine. GitHub supplies source archives automatically; this workflow does not claim that a build on Garuda is portable across Linux distributions.
 
 The initial v0.4.0 release must be published before the app can discover it. Nothing is published merely by applying this patch or opening the app.
+
+## Package validation and distribution CI
+
+The **Linux packages** workflow builds on Ubuntu 24.04 and Fedora 43, validates package metadata and ELF payloads, installs the matching package, and runs a 20-second launch check under a virtual display as an ordinary user. Artifacts are retained by GitHub Actions. This is an installation/launch check, not an end-to-end validation of system-changing workflows.
+
+Run `python3 scripts/verify-packages.py` after a local package build to stage named assets and checksums in `artifacts/release/`. Release binaries must have runtime requirements compatible with their declared dependency floor. Hosted release downloads should be downloaded and verified before publication.
+
+`packaging/aur/PKGBUILD` is a local Arch build recipe pinned to the release tag. Run `makepkg -si` from a copy of that directory after the tag is published. This recipe has not been submitted to AUR and has not been validated in a clean Arch chroot. The project license remains unchanged.

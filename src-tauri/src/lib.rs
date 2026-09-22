@@ -1,5 +1,7 @@
 use tauri::Manager;
 mod configuration;
+mod operations;
+mod desktop_status;
 mod diagnostics;
 mod health;
 mod releases;
@@ -24,6 +26,8 @@ pub fn run() {
     platform::initialize_path();
     tauri::Builder::default()
         .manage(jobs::Jobs::default())
+        .manage(desktop_status::HealthNotice::default())
+        .setup(|app| { if let Err(error)=desktop_status::setup(app.handle()) { eprintln!("Tray unavailable: {error}"); } Ok(()) })
         .manage(toolbox::Toolbox::default())
         .manage(terminal::Terminals::default())
         .on_window_event(|window, event| {
@@ -34,6 +38,14 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            operations::load_operations,
+            operations::save_operations,
+            operations::record_recovery_baseline,
+            operations::recovery_baselines,
+            operations::assess_profile,
+            operations::change_timeline,
+            desktop_status::health_notification,
+            desktop_status::desktop_status_info,
             discover_repositories,
             open_repository,
             settings::load_settings,

@@ -160,6 +160,7 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
             integrations::validate_restore_target(std::path::Path::new(target))?;
             fs::create_dir(target).map_err(|e| e.to_string())?;
         }
+        crate::desktop_status::status(&app,"Command Center · Task running");
         state.cancel = false;
         let command = shell_words::join(
             std::iter::once(plan.program.as_str()).chain(plan.args.iter().map(String::as_str)),
@@ -200,12 +201,23 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
     .await
     .map_err(|e| e.to_string())?
 }
-fn build_plan(
+pub(crate) fn build_plan(
     app: &tauri::AppHandle,
     request: &Request,
     settings: &crate::settings::Settings,
 ) -> Result<Plan, String> {
-    if request.action == "toolbox" {
+    let mut configured=settings.clone();
+    if !request.profile_id.is_empty() {
+        let collection=crate::operations::load_operations(app.clone())?;
+        let profile=collection.profiles.iter().find(|p|p.id==request.profile_id).ok_or("Machine profile no longer exists")?;
+        if !profile.dotfiles_path.is_empty(){ configured.integrations.dotfiles_path=profile.dotfiles_path.clone(); }
+        if !profile.flake_profile.is_empty(){ configured.integrations.flake_profile=profile.flake_profile.clone(); }
+    }
+    let settings=&configured;
+    if ["personal-tool","recovery-test","profile-clone","backup-ready","health-check"].contains(&request.action.as_str()) {
+        settings.validate()?;
+        crate::operations::plan(app,request,settings)
+    } else if request.action == "toolbox" {
         settings.validate()?;
         app.state::<crate::toolbox::Toolbox>().plan(request)
     } else {
@@ -288,6 +300,7 @@ fn finish(
     message: &str,
 ) {
     append(jobs, id, message);
+    crate::desktop_status::job_finished(app,status);
     if let Ok(mut state) = jobs.0.lock() {
         state.pid = None;
         if let Some(job) = state.jobs.iter_mut().find(|j| j.id == id) {

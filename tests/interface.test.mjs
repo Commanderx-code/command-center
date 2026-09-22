@@ -86,6 +86,7 @@ async function setup(overrides = {}) {
   w.HTMLDialogElement.prototype.close = function () {
     this.open = false;
   };
+  w.structuredClone = structuredClone;
   w.__TAURI__ = {
     core: {
       invoke: async (command, args) => {
@@ -693,4 +694,24 @@ test('Toolbox update checks stay separate from catalog refresh and updates requi
   x.responses.toolbox_catalog_update=new Error('offline');x.$('#catalog-update-check').click();await settle();assert.equal(x.$('#catalog-update-command').textContent,'');assert.equal(x.$('#catalog-update-compare').disabled,true);
   x.responses.toolbox_update_checks=new Error('unavailable');x.$('#installed-update-check').click();await settle();assert.equal(x.$('#installed-update-actions').children.length,0);assert.match(x.$('#installed-update-status').textContent,/unavailable/);
  }finally{x.dom.window.close();}
+});
+
+test('workflow review cancellation starts nothing and leaves next step ready', async () => {
+ const recipe={id:'fixture',name:'Fixture workflow',steps:[{name:'Backup',request:{action:'backup'},satisfiedPath:''}]};
+ const x=await setup({load_operations:{workflows:[recipe],profiles:[],tools:[],notifications:{enabled:false,quietStart:22,quietEnd:7}}});
+ try {
+ x.$('[data-view="operations"]').click();await settle();
+ x.$('[data-recipe="fixture"][data-op="run"]').click();await settle();
+ x.$('#recipe-next').click();await settle();
+ assert.equal(x.calls.find(c=>c.command==='prepare_job').args.request.action,'backup');
+ x.$('#review-cancel').click();await settle();
+ assert.equal(x.calls.filter(c=>c.command==='start_job').length,0);
+ assert.ok(x.$('#recipe-next'));
+ } finally {x.dom.window.close();}
+});
+
+test('profile assessment does not run installers and renders untrusted names as text',async()=>{
+ const recipe={id:'profile',name:'Laptop',steps:[{name:'Install',request:{action:'toolbox',toolId:'fixture'},satisfiedPath:''}]};
+ const x=await setup({load_operations:{workflows:[],profiles:[recipe],tools:[],notifications:{}},assess_profile:[{name:'<script>alert(1)</script>',status:'Needs setup',detail:'Missing prerequisite'}]});
+ try{x.$('[data-view="operations"]').click();await settle();x.$('[data-recipe="profile"][data-op="run"]').click();await settle();assert.equal(x.$('#profile-assessment script'),null);assert.match(x.$('#profile-assessment').textContent,/Missing prerequisite/);assert.equal(x.calls.filter(c=>c.command==='start_job').length,0);}finally{x.dom.window.close();}
 });

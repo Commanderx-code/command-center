@@ -1,3 +1,4 @@
+import { createOperations } from "./operations.js";
 import { createToolboxUpdates } from './toolbox-updates.js';
 import { createReleases } from './releases.js';
 import { createSystemWorkflows } from "./system-workflows.js";
@@ -554,6 +555,7 @@ export function createFeatures(api) {
     try {
       const history = await run("job_history", { selectedId: selectedJob });
       jobs = history.jobs;
+      operations.updateJobs(jobs);
       gitControls?.updateJobs(jobs);
       $$("#repo-details [data-repo-job]").forEach(button => { button.disabled = jobs.some(job => job.status === "running"); });
       if (history.closeRequested) {
@@ -782,6 +784,7 @@ export function createFeatures(api) {
       health = await run("system_health");
       renderHealth();
       renderAttention();
+      operations.health(attentionItems([],[],health,state.settings.integrations.backupMaxHours));
     } catch (err) {
       $("#backup-summary").textContent = `Backup status unavailable: ${err}. Refresh health before starting a backup.`;
       $("#health-time").textContent = `Health checks failed: ${err}. Previous results may be stale. Retry with Refresh.`;
@@ -1115,6 +1118,7 @@ export function createFeatures(api) {
     setInterval(() => void poll(), 1500);
   }
   function onView(view) {
+    operations.onView(view);
     toolbox.onView(view);
     systemWorkflows.onView(view);
     if (view === "sync") void refreshSync();
@@ -1126,6 +1130,7 @@ export function createFeatures(api) {
   mount();
   const toolbox = createToolbox({ ...api, run, guard, review, action });
   const systemWorkflows = createSystemWorkflows({...api,run,action});
+  const operations = createOperations({...api,run,action,review});
   createReleases({$,run,state});
   createToolboxUpdates({...api,run,action});
   const configHistory = createConfigHistory({$,run,review,getDocument:()=>configDocument,getKind:()=>configKind,setDraft(content){$("#config-text").value=content;$("#config-state").textContent="Unsaved restored draft";renderConfigControls();}});

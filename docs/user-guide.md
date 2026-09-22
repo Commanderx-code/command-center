@@ -159,3 +159,7 @@ Expand **Toolbox Updates** inside Toolbox. Checking updates never starts an inst
 - **Review & update** detects full-upgrade in an interactive fish shell, Topgrade, Garuda's updater, an Arch fallback, and Flatpak. Fish detection loads your normal interactive configuration. These are whole-system or package-source operations; Toolbox cannot attribute installed packages to its installer entries. Choose one broad workflow or individual managers to avoid running the same updates twice. The command is reviewed through Activity and runs with normal interactive prompts in the selected embedded/external terminal. No automatic confirmation flags are added. Review/export embedded terminal output using its existing controls. External terminal output stays external.
 
 A failed or unavailable check is never shown as “up to date.” Zero entries from cached data are not proof that no newer versions exist. Recheck after an update; displayed results become stale when you launch an update.
+
+## Workflows, machine profiles, and personal tools
+
+See [Workflows, profiles, and recovery verification](operations.md) for the new recipe editor, personal Toolbox catalog, checksum recovery tests, change timeline, and notification/tray preferences.

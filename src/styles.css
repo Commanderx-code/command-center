@@ -335,3 +335,9 @@ button:disabled { cursor:default; }
 #config-history-select, #stash-select { max-width:100%; }
 #history-current, #history-backup { max-height:380px; white-space:pre-wrap; overflow-wrap:anywhere; }
 #inventory-panels pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+
+/* Workflows and personal catalog */
+#recipe-steps li, #recipe-progress li { padding: .6rem; border-bottom: 1px solid var(--border); }
+.current-step { border-left: 3px solid var(--accent); }
+#personal-list .secondary-button { margin: .35rem; }
+#personal-tool-dialog, #recipe-dialog { max-height: 88vh; overflow: auto; width: min(760px,90vw); }

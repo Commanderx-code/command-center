@@ -124,6 +124,8 @@ async function openRepository(path, target) {
 }
 
 const viewCopy = {
+  operations: ["Routines", "Workflows & profiles"],
+  timeline: ["History", "Change timeline"],
   services: ["Systemd", "Services"],
   inventory: ["Diagnostics", "System inventory"],
   toolbox: ["Workstation tools", "Toolbox"],

@@ -11,8 +11,9 @@ const remote=run('git',['ls-remote','https://github.com/Commanderx-code/command-
 const refs=remote.split('\n').map(line=>line.split(/\s+/));
 const sha=refs.find(r=>r[1]===`refs/tags/${tag}^{}`)?.[0]||refs.find(r=>r[1]===`refs/tags/${tag}`)?.[0];
 if(sha!==run('git',['rev-parse','HEAD']))throw new Error('Push the matching release tag to GitHub first.');
-for(const script of ['check','test','test:rust','desktop:build']){
+for(const script of ['check','test','test:rust','desktop:package']){
  const r=spawnSync('npm',['run',script],{cwd:root,stdio:'inherit'});if(r.status!==0)throw new Error(`${script} failed; no draft created.`);
 }
-console.log(run('gh',['release','create',tag,'--repo','Commanderx-code/command-center','--verify-tag','--draft','--title',`Command Center ${tag}`,'--notes-file','docs/release-notes.md']));
-console.log('Draft created. Review it on GitHub and publish when ready. Source archives are supplied by GitHub; no portable binary is claimed.');
+run('python3',['scripts/verify-packages.py']);
+console.log(run('gh',['release','create',tag,`artifacts/release/command-center_${version}_amd64.deb`,`artifacts/release/command-center-${version}-1.x86_64.rpm`,'artifacts/release/SHA256SUMS','--repo','Commanderx-code/command-center','--verify-tag','--draft','--title',`Command Center ${tag}`,'--notes-file','docs/release-notes.md']));
+console.log('Draft created. Review it on GitHub and publish when ready. Packages and checksums are attached. Verify hosted downloads and distribution test results before publishing.');

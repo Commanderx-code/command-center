@@ -41,12 +41,14 @@
     "linux": {
       "deb": {
         "depends": [
-          "libc6 (>= 2.39)"
+          "libc6 (>= 2.39)",
+          "libayatana-appindicator3-1"
         ]
       },
       "rpm": {
         "depends": [
-          "libc.so.6(GLIBC_2.39)(64bit)"
+          "libc.so.6(GLIBC_2.39)(64bit)",
+          "libappindicator3.so.1()(64bit)"
         ]
       }
     }

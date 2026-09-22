@@ -80,6 +80,8 @@ pub fn detect_integrations() -> Integrations {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Request {
+    pub profile_id: String,
+    pub inputs: std::collections::BTreeMap<String,String>,
     pub scope: String,
     pub unit: String,
     pub schedule: String,

@@ -1,0 +1,28 @@
+# Local Arch build recipe. Not submitted to AUR.
+pkgname=command-center
+pkgver=0.4.0
+pkgrel=1
+pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
+arch=('x86_64')
+url='https://github.com/Commanderx-code/command-center'
+depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3')
+makedepends=('git' 'nodejs' 'npm' 'rust' 'pkgconf')
+optdepends=('libnotify: desktop notifications' 'restic: backup recovery' 'fish: Fish custom actions')
+source=("git+https://github.com/Commanderx-code/command-center.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+prepare() {
+  cd "$srcdir/command-center"
+  npm ci
+  cargo fetch --manifest-path src-tauri/Cargo.toml --locked
+}
+build() {
+  cd "$srcdir/command-center"
+  npm run desktop:build -- --locked
+}
+package() {
+  cd "$srcdir/command-center"
+  install -Dm755 src-tauri/target/release/command-center "$pkgdir/usr/bin/command-center"
+  install -Dm644 packaging/io.helixstack.commandcenter.desktop "$pkgdir/usr/share/applications/io.helixstack.commandcenter.desktop"
+  install -Dm644 src-tauri/icons/command-center.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/io.helixstack.commandcenter.svg"
+  install -Dm644 THIRD_PARTY.md "$pkgdir/usr/share/doc/$pkgname/THIRD_PARTY.md"
+}

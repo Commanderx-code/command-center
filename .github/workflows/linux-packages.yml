@@ -1,0 +1,63 @@
+name: Linux packages
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: linux-packages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ubuntu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Install build and smoke-test dependencies
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf restic rpm libarchive-tools xvfb dbus-x11 libnotify-bin
+      - run: npm ci
+      - run: npm run check && npm test && npm run test:rust
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: npm run desktop:package
+      - run: python3 scripts/verify-packages.py
+      - name: Install Debian package
+        run: sudo apt-get install -y ./artifacts/release/*.deb
+      - name: Launch installed application on a virtual display
+        run: bash scripts/smoke-desktop.sh /usr/bin/command-center
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-packages
+          path: artifacts/release/*
+  fedora:
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    timeout-minutes: 35
+    steps:
+      - name: Install tools
+        run: dnf install -y git nodejs npm rust cargo gcc gcc-c++ pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel rpm-build python3 binutils libarchive xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon shadow-utils libnotify
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci && npm run check && npm test
+      - run: npm run desktop:package
+      - run: python3 scripts/verify-packages.py
+      - name: Install RPM and create smoke-test user
+        run: dnf install -y ./artifacts/release/*.rpm && useradd -m smoke
+      - name: Launch installed application as a normal user
+        run: runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fedora-packages
+          path: artifacts/release/*
