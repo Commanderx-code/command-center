@@ -5,6 +5,7 @@ use tauri::Manager;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    pub setup_completed: bool,
     pub custom_actions: Vec<crate::custom_actions::CustomAction>,
     pub display_name: String,
     pub editor: String,
@@ -28,6 +29,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            setup_completed: false,
             custom_actions: Vec::new(),
             display_name: "Commander".into(),
             editor: "auto".into(),
@@ -212,6 +214,7 @@ pub fn load_settings(app: tauri::AppHandle) -> Result<Option<Settings>, String> 
 }
 #[tauri::command]
 pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
+    let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     settings.validate()?;
     let path = location(&app)?;
     fs::create_dir_all(path.parent().ok_or("Invalid settings path")?).map_err(|e| e.to_string())?;

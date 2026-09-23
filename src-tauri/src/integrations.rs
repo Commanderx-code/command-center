@@ -23,10 +23,11 @@ pub fn detect_integrations() -> Integrations {
     out.wallet_entry = field("walletEntry");
     if out.dotfiles_path.is_empty() {
         for candidate in [
+            p::home().join("github/projects/Commander-os"),
             p::home().join("github/projects/dotfiles"),
             p::home().join("dotfiles"),
         ] {
-            if candidate.join("home-manager/flake.nix").is_file() {
+            if candidate.join("home-manager/flake.nix").is_file() || candidate.join("flake.nix").is_file() {
                 out.dotfiles_path = candidate.to_string_lossy().into_owned();
                 break;
             }

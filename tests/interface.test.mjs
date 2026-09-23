@@ -80,6 +80,8 @@ async function setup(overrides = {}) {
   // xterm probes canvas when imported; terminal rendering is covered in the browser.
   w.HTMLCanvasElement.prototype.getContext = () => null;
   w.setInterval = () => 0;
+  w.requestAnimationFrame = callback => w.setTimeout(callback, 0);
+  w.cancelAnimationFrame = id => w.clearTimeout(id);
   w.HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
   };
@@ -714,4 +716,78 @@ test('profile assessment does not run installers and renders untrusted names as 
  const recipe={id:'profile',name:'Laptop',steps:[{name:'Install',request:{action:'toolbox',toolId:'fixture'},satisfiedPath:''}]};
  const x=await setup({load_operations:{workflows:[],profiles:[recipe],tools:[],notifications:{}},assess_profile:[{name:'<script>alert(1)</script>',status:'Needs setup',detail:'Missing prerequisite'}]});
  try{x.$('[data-view="operations"]').click();await settle();x.$('[data-recipe="profile"][data-op="run"]').click();await settle();assert.equal(x.$('#profile-assessment script'),null);assert.match(x.$('#profile-assessment').textContent,/Missing prerequisite/);assert.equal(x.calls.filter(c=>c.command==='start_job').length,0);}finally{x.dom.window.close();}
+});
+
+test('project detection saves tasks without execution and task review cancellation starts nothing',async()=>{
+  const task={id:'npm-test',name:'Test <script>',command:'npm run test',shell:'direct',mode:'embedded'};
+  const x=await setup({detect_project_tasks:[task]});
+  try{
+    x.$('[data-details]').click();await settle();
+    x.$('#task-detect').click();await settle();assert.equal(x.$('#task-suggestions script'),null);
+    x.$('[data-suggestion]').click();await settle();
+    const save=x.calls.find(c=>c.command==='save_project');assert.equal(save.args.project.tasks[0].command,'npm run test');
+    assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+    x.$('[data-task][data-op="run"]').click();await settle();
+    assert.equal(x.calls.find(c=>c.command==='prepare_job').args.request.action,'project-task');
+    x.$('#review-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+    submit(x.w,x.$('#project-form'));await settle();
+    assert.equal(x.calls.filter(c=>c.command==='save_project').at(-1).args.project.tasks.length,1);
+    x.$('[data-task][data-op="run"]').click();await settle();submit(x.w,x.$('#review-form'));await settle();
+    assert.equal(x.$('#repo-detail-dialog').open,false);assert.equal(x.$('#terminal-view').classList.contains('active-view'),true);
+
+  }finally{x.dom.window.close();}
+});
+
+test('setup wizard detects into a draft, checks it, and saves only after final review',async()=>{
+  const x=await setup({setup_environment:{home:'/home/fixture',distribution:'Fixture Linux'},load_operations:{profiles:[]},detect_integrations:{backupScript:'/fixture/backup',dotfilesPath:'/other'},check_integrations:[{label:'restic',status:'missing',message:'Not installed'}]});
+  try{
+    x.$('#setup-open').click();await settle();assert.equal(x.$('#setup-dialog').open,true);
+    x.$('#setup-next').click();await settle();x.$('#setup-detect').click();await settle();
+    assert.equal(x.$('#setup-dotfilesPath').value,'/fixture/dotfiles');assert.equal(x.$('#setup-backupScript').value,'/fixture/backup');
+    assert.equal(x.calls.some(c=>c.command==='save_settings'),false);
+    x.$('#setup-next').click();await settle();x.$('#setup-check').click();await settle();
+    assert.match(x.$('#setup-checks').textContent,/Not installed/);
+    assert.equal(x.calls.find(c=>c.command==='check_integrations').args.integrations.backupScript,'/fixture/backup');
+    x.$('#setup-next').click();await settle();assert.match(x.$('#setup-review').textContent,/\/fixture\/backup/);
+    submit(x.w,x.$('#setup-form'));await settle();
+    const saved=x.calls.find(c=>c.command==='save_settings').args.settings;assert.equal(saved.setupCompleted,true);assert.equal(saved.integrations.backupScript,'/fixture/backup');
+    assert.equal(x.calls.some(c=>c.command==='start_job'),false);
+  }finally{x.dom.window.close();}
+});
+
+const setupBundle=()=>({format:'command-center-setup',version:1,sourceHome:'/home/old',settings:normalize(),operations:{workflows:[],profiles:[],tools:[],notifications:{}},workspace:{},repositories:['/home/new/repo'],toolboxFavorites:['tool']});
+test('bundle import needs preview and explicit replacement choice; changed paths invalidate consent',async()=>{
+  const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:setupBundle()});
+  try{
+    const input=x.$('#bundle-file');Object.defineProperty(input,'files',{value:[{size:100,text:async()=>JSON.stringify(setupBundle())}],configurable:true});
+    input.dispatchEvent(new x.w.Event('change'));await settle();
+    assert.equal(x.$('#bundle-dialog').open,true);assert.equal(x.$('#bundle-apply').disabled,true);
+    x.$('#bundle-consent').checked=true;x.$('#bundle-consent').dispatchEvent(new x.w.Event('change'));assert.equal(x.$('#bundle-apply').disabled,false);
+    x.$('#bundle-home').value='/home/elsewhere';x.$('#bundle-home').dispatchEvent(new x.w.Event('input'));assert.equal(x.$('#bundle-apply').disabled,true);assert.equal(x.$('#bundle-consent').checked,false);
+    x.$('#bundle-cancel').click();await settle();assert.equal(x.calls.some(c=>c.command==='import_setup_bundle'||c.command==='start_job'),false);
+  }finally{x.dom.window.close();}
+});
+test('bundle preview arriving after a home edit cannot enable an unreviewed import',async()=>{
+  let resolve;const pending=new Promise(r=>resolve=r);
+  const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:()=>pending});
+  try{
+    const input=x.$('#bundle-file');Object.defineProperty(input,'files',{value:[{size:100,text:async()=>JSON.stringify(setupBundle())}]});input.dispatchEvent(new x.w.Event('change'));await settle();
+    x.$('#bundle-home').value='/home/changed';x.$('#bundle-home').dispatchEvent(new x.w.Event('input'));resolve(setupBundle());await settle();
+    assert.equal(x.$('#bundle-content').textContent,'');assert.equal(x.$('#bundle-apply').disabled,true);
+  }finally{x.dom.window.close();}
+});
+test('bundle export requires review and uses a separate format from settings exports',async()=>{
+  const x=await setup({create_setup_bundle:setupBundle(),export_setup_bundle:'/downloads/setup.json'});
+  try{
+    x.$('#bundle-export').click();await settle();assert.equal(x.calls.some(c=>c.command==='export_setup_bundle'),false);
+    assert.match(x.$('#bundle-content').textContent,/command-center-setup/);
+    x.$('#bundle-apply').click();await settle();assert.equal(x.calls.filter(c=>c.command==='export_setup_bundle').length,1);assert.match(x.$('#bundle-status').textContent,/\/downloads\/setup.json/);
+  }finally{x.dom.window.close();}
+});
+test('navigation exposes current page, keyboard arrows and main-content focus',async()=>{
+  const x=await setup();try{
+    const nav=x.$('[data-view="repositories"]');nav.click();await settle();assert.equal(nav.getAttribute('aria-current'),'page');assert.equal(x.w.document.activeElement.id,'view-title');
+    nav.focus();nav.dispatchEvent(new x.w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));assert.notEqual(x.w.document.activeElement,nav);
+    assert.equal(x.$('.skip-link').getAttribute('href'),'#main-content');
+  }finally{x.dom.window.close();}
 });

@@ -341,3 +341,19 @@ button:disabled { cursor:default; }
 .current-step { border-left: 3px solid var(--cyan); }
 #personal-list .secondary-button { margin: .35rem; }
 #personal-tool-dialog, #recipe-dialog { max-height: 88vh; overflow: auto; width: min(760px,90vw); }
+
+/* Setup and project workspace accessibility. */
+.skip-link { position: fixed; top: -5rem; left: 1rem; z-index: 10000; background: var(--panel); color: var(--text); padding: .8rem 1rem; border: 2px solid currentColor; border-radius: .5rem; }
+.skip-link:focus { top: 1rem; }
+:where(button, a, input, select, textarea, pre):focus-visible { outline: 2px solid var(--accent, #67e8f9); outline-offset: 3px; }
+#setup-form section > label { display: grid; gap: .4rem; margin: 1rem 0; }
+#bundle-home-label { display: grid; gap: .4rem; margin: 1rem 0; }
+#bundle-home-label[hidden] { display: none; }
+.bundle-content { max-height: 42vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+#project-workspace code { overflow-wrap: anywhere; white-space: pre-wrap; }
+#project-workspace .timer-row { flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+#setup-form input, #setup-form textarea, #setup-form select, #bundle-home, #task-command { width:100%; min-width:0; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--bg); color:var(--text); font:inherit; }
+#setup-form, #bundle-dialog { font-size:14px; line-height:1.6; }
+#setup-form select { margin-top:.5rem; }
+#setup-form h3:focus, #view-title:focus { outline:none; }

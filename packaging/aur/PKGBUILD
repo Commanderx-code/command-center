@@ -1,6 +1,6 @@
 # Local Arch build recipe. Not submitted to AUR.
 pkgname=command-center
-pkgver=0.4.0
+pkgver=0.5.0
 pkgrel=1
 pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
 arch=('x86_64')

@@ -1,3 +1,4 @@
+import { createSetupCenter } from "./setup-center.js";
 import { createCommandPalette } from "./command-palette.js";
 import { createPreferenceExtras } from "./preference-extras.js";
 import { version } from "../package.json";
@@ -149,11 +150,12 @@ const placeholderCopy = {
 };
 
 function switchView(view) {
+  const moved = state.activeView !== view;
   state.activeView = view;
   features.onView(view);
   if (view !== "settings") applyAppearance(state.settings);
   else if (state.preferencesDirty) { try { applyAppearance(draftPreferences()); } catch {} }
-  $$(".nav-item[data-view]").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
+  $$(".nav-item[data-view]").forEach((item) => { item.classList.toggle("active", item.dataset.view === view); if(item.dataset.view===view)item.setAttribute("aria-current","page");else item.removeAttribute("aria-current"); });
   $$(".view").forEach((element) => element.classList.remove("active-view"));
   const directView = $(`#${view}-view`);
   (directView || $("#placeholder-view")).classList.add("active-view");
@@ -163,6 +165,7 @@ function switchView(view) {
     $("#placeholder-title").textContent = viewCopy[view]?.[1] || "Module coming next";
     $("#placeholder-copy").textContent = placeholderCopy[view] || "This module is planned for a future phase.";
   }
+  if(moved && !document.querySelector("dialog[open]")) $("#view-title").focus({preventScroll:true});
 }
 
 function openSettings() { switchView("settings"); }
@@ -228,7 +231,7 @@ function draftPreferences() {
   const roots = $("#pref-roots").value.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
   if (roots.length > 32 || roots.some(r => r.length > 4096 || r.includes("\0") || !/^(~$|~\/|\/)/.test(r))) throw new Error("Use up to 32 absolute or ~/ folder paths, one per line.");
   if (!$("#pref-name").value.trim()) throw new Error("Enter a display name.");
-  return normalize({ customActions: preferenceExtras.read(), integrations: features.readIntegrations(), displayName: $("#pref-name").value, editor: $("#pref-editor").value,
+  return normalize({setupCompleted: state.settings.setupCompleted, customActions: preferenceExtras.read(), integrations: features.readIntegrations(), displayName: $("#pref-name").value, editor: $("#pref-editor").value,
     terminal: $("#pref-terminal").value, accent: $("#pref-accent").value, density: $("#pref-density").value,
     theme: $("#pref-theme").value, textSize: $("#pref-text-size").value,
     repoLayout: $("#pref-layout").value, repoSort: $("#pref-sort").value,
@@ -268,12 +271,14 @@ async function savePreferences(event) {
 }
 
 async function initialize() {
+  await setupCenter.beforeInitialize();
   let prefs;
   let status = "Preferences are up to date.";
   try {
     if (state.desktop) {
       prefs = await invoke("load_settings");
       if (!prefs) {
+        state.firstRun = true;
         prefs = readBrowserSettings(localStorage);
         await invoke("save_settings", { settings: prefs });
       }
@@ -290,10 +295,18 @@ async function initialize() {
   $("#save-preferences").disabled = true;
   $("#discard-preferences").disabled = true;
   await features.initialize();
+  setupCenter.initialized();
   void loadRepositories();
 }
 
 function bindEvents() {
+  $('.main-nav').addEventListener('keydown',event=>{
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key) || !event.target.matches('button[data-view]'))return;
+    const buttons=[...$('.main-nav').querySelectorAll('button[data-view]')];
+    const i=buttons.indexOf(event.target);
+    const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(i+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;
+    event.preventDefault();buttons[next].focus();
+  });
   $$("[data-view]").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
   $$("[data-go]").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.go)));
 
@@ -328,6 +341,9 @@ function bindEvents() {
 const features = createFeatures({state, $, $$, escapeHtml, toast, switchView, loadRepositories, renderRepositoryGrid});
 $("#preferences-form").inert = true;
 const preferenceExtras = createPreferenceExtras({ state, $, escapeHtml, draftPreferences, populatePreferences, updateDraftStatus, action: features.action, toast, invoke });
+const setupCenter = createSetupCenter({state,invoke,escapeHtml,toast,switchView,
+  async acceptSettings(value){state.settings=normalize(value);state.roots=state.settings.roots;state.preferencesDirty=false;populatePreferences(state.settings);applyPreferences();await loadRepositories();}
+});
 setupSettingsTools({ invoke, readIntegrations: features.readIntegrations });
 $(".version-badge").textContent = `Version ${version}`;
 bindEvents();

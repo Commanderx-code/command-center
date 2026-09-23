@@ -1,3 +1,4 @@
+import { mountProjectWorkspace } from "./project-workspace.js";
 import { createOperations } from "./operations.js";
 import { createToolboxUpdates } from './toolbox-updates.js';
 import { createReleases } from './releases.js';
@@ -430,7 +431,7 @@ export function createFeatures(api) {
           );
       card.insertAdjacentHTML(
         "beforeend",
-        `<div class="repo-extra-actions">${button("Details", "data-details")}${button("Launch profile", "data-launch")}</div>`,
+        `<div class="repo-extra-actions">${button("Workspace", "data-details")}${button("Launch profile", "data-launch")}</div>`,
       );
       card.querySelector(".favorite-button").addEventListener(
         "click",
@@ -465,7 +466,7 @@ export function createFeatures(api) {
       launchTerminal: true,
       launchDocs: false,
     };
-    const data = { ...defaults, ...project };
+    const data = { ...defaults, ...workspace[path], ...project };
     if (state.desktop) await run("save_project", { path, project: data });
     else
       localStorage.setItem(
@@ -511,6 +512,12 @@ export function createFeatures(api) {
         .join(
           "",
         )}</div><button class="primary-button" type="submit">Save profile</button></form>`;
+    $('#repo-details').insertAdjacentHTML('afterbegin', '<div id="project-workspace"></div>');
+    mountProjectWorkspace({target:$('#project-workspace'),path,project,invoke,action,escapeHtml:e,toast,
+      save:patch=>saveProject(path,patch),
+      openActivity(view = 'activity'){ $('#repo-detail-dialog').close(); switchView(view); },
+      async launch(){ await saveProject(path,{}); const results=await run('launch_project',{path}); toast(results.join(' · ')); }
+    });
     if (!commitDrafts.has(path)) commitDrafts.set(path, { message: "" });
     gitControls = mountGitControls({ target: $("#git-controls"), data, path, desktop: state.desktop,
       escapeHtml: e, action, refresh: () => showRepository(path), toast, draft: commitDrafts.get(path), invoke, jobs, openActivity: (id) => { selectedJob = id; $("#repo-detail-dialog").close(); switchView("activity"); } });
@@ -1089,25 +1096,6 @@ export function createFeatures(api) {
     } catch (error) {
       toast(`Project profiles could not be loaded: ${error}`, true);
       workspace = {};
-    }
-    if (
-      state.desktop &&
-      !state.settingsLoadFailed &&
-      !state.settings.integrations.dotfilesPath
-    ) {
-      try {
-        const detected = await run("detect_integrations");
-        state.settings.integrations = normalizeIntegrations({
-          ...state.settings.integrations,
-          ...Object.fromEntries(
-            Object.entries(detected).filter(([, v]) => v !== ""),
-          ),
-        });
-        await run("save_settings", { settings: state.settings });
-        populateIntegrations(state.settings.integrations);
-      } catch (error) {
-        toast(`Setup detection: ${error}`, true);
-      }
     }
     renderRepositoryGrid();
     renderActivity();

@@ -18,7 +18,7 @@ A machine profile is a named, ordered setup recipe for a workstation, laptop, or
 
 **Review profile** shows whether each command can be prepared on the current machine. Optional path checks show **Present · inspect before skipping** when a file or directory exists. Presence does not establish that the right version or content is installed. **Skip inspected step** requires confirmation. Missing prerequisites can be satisfied by earlier steps; the app rechecks each command immediately before execution.
 
-Profiles operate on the local computer. They do not connect to remote machines, automatically replace configuration files, or bypass Toolbox installer prompts. Clone destinations must be new directories. Recipes and personal tools currently live separately from Settings exports; retain `operations.json` with your local app-data backups.
+Profiles operate on the local computer. They do not connect to remote machines, automatically replace configuration files, or bypass Toolbox installer prompts. Clone destinations must be new directories. Recipes and personal tools live in `operations.json`. In 0.5.0, [setup bundles](setup-and-workspaces.md) include them; preference-only Settings exports still do not.
 
 ## Personal Toolbox folders
 

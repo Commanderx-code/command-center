@@ -133,6 +133,7 @@ pub async fn prepare_job(app: tauri::AppHandle, request: Request) -> Result<Plan
 #[tauri::command]
 pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
         let jobs = app.state::<Jobs>().inner().clone();
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
         if active(&state) {
@@ -149,7 +150,7 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
         // Recheck mutable preconditions off the UI thread without holding the activity lock.
         let settings = crate::settings::load_settings(app.clone())?.unwrap_or_default();
         let current = build_plan(&app, &request, &settings)?;
-        if current.args != plan.args || current.program != plan.program || current.cwd != plan.cwd {
+        if current.args != plan.args || current.program != plan.program || current.cwd != plan.cwd || current.interactive != plan.interactive || current.external_terminal != plan.external_terminal {
             return Err("Settings changed; review the action again".into());
         }
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
@@ -217,6 +218,8 @@ pub(crate) fn build_plan(
     if ["personal-tool","recovery-test","profile-clone","backup-ready","health-check"].contains(&request.action.as_str()) {
         settings.validate()?;
         crate::operations::plan(app,request,settings)
+    } else if request.action == "project-task" {
+        crate::workspace::task_plan(app, request)
     } else if request.action == "toolbox" {
         settings.validate()?;
         app.state::<crate::toolbox::Toolbox>().plan(request)
@@ -537,6 +540,14 @@ pub fn prevent_close(app: &tauri::AppHandle) -> bool {
         }
     }
     false
+}
+pub(crate) fn require_idle(app: &tauri::AppHandle) -> Result<(), String> {
+    let jobs = app.state::<Jobs>();
+    let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
+    initialize(app, &mut state)?;
+    if active(&state) { return Err("Finish the running job before importing a setup".into()); }
+    state.plans.clear();
+    Ok(())
 }
 
 #[cfg(test)]

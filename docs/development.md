@@ -33,7 +33,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
 The JavaScript suite covers preference migration, project filters, configuration editing, backup result parsing, and interface flows through a simulated desktop bridge.
 
-Rust tests exercise temporary Git remotes, fast-forward and divergence behavior, process cancellation and timeouts, Unicode output, private atomic persistence, configuration backups and conflicts, catalog completeness, compatibility rejection, and PTY input, resizing, and cancellation. Restic integration tests use a temporary encrypted repository when Restic is installed.
+Rust tests exercise temporary Git remotes, fast-forward and divergence behavior, process cancellation and timeouts, Unicode output, private atomic persistence, setup remapping/redaction/import rollback, read-only project task detection, configuration backups and conflicts, catalog completeness, compatibility rejection, and PTY input, resizing, and cancellation. Restic integration tests use a temporary encrypted repository when Restic is installed.
 
 Tests do not push real repositories, run personal backups, activate Home Manager, or execute real Toolbox installers. UI changes should also be checked visually in the browser preview and, for native behavior, in the desktop app.
 

@@ -2,6 +2,15 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.5.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.5.0) — 2026-09-23
+
+- Added portable setup bundles for preferences, repositories, workspace profiles/tasks, workflows, machine profiles, personal tools, and Toolbox favorites.
+- Added reviewed import with home-directory remapping, credential-reference exclusions, previous-state backups, write-failure rollback, and no automatic command execution.
+- Added a first-run setup wizard with draft-only detection, editable connections, prerequisite checks, and machine-profile inspection.
+- Added per-repository tasks, read-only npm/Cargo task detection, embedded/background/external execution, and related service inspection.
+- Preserve saved tasks when updating repository organization and launch profiles.
+- Added a skip link, active-page semantics, navigation arrow keys, heading focus, and OS reduced-motion support.
+
 ## [0.4.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.4.0) — 2026-09-22
 
 - Added saved maintenance workflows with per-step command review, progress, failure stops, and explicit retries.

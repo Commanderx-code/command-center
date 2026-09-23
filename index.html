@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -31,12 +32,12 @@
         </div>
       </aside>
 
-      <main>
+      <main id="main-content" tabindex="-1">
         <p id="preview-notice" class="preview-notice" hidden>Browser preview · Sample repositories. Desktop scanning and launches require the Tauri app.</p>
         <header class="topbar">
           <div>
             <p class="eyebrow" id="view-eyebrow">Overview</p>
-            <h1 id="view-title">Good evening, Commander.</h1>
+            <h1 id="view-title" tabindex="-1">Good evening, Commander.</h1>
           </div>
           <div class="top-actions">
             <button class="icon-button" id="refresh-button" title="Refresh repositories" aria-label="Refresh repositories">↻</button>

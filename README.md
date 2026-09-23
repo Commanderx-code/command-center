@@ -45,6 +45,15 @@ Command Center brings [Commander Toolbox](https://github.com/Commanderx-code/com
 
 The app runs as your normal user. Commands are reviewed before execution; Toolbox scripts retain their own privilege checks and confirmations. Integration paths are editable in **Settings**. See the [user guide](docs/user-guide.md) for exact behavior and limitations.
 
+## New in 0.5.0
+
+- Portable setup bundles with a full import preview, home-path remapping, and backups before replacement.
+- A first-run wizard for existing Commander-os/Home Manager and Restic connections.
+- Project workspaces with reviewed build/test/dev tasks, manifest suggestions, and related service inspection.
+- Keyboard navigation, focus, and reduced-motion improvements.
+
+Read [Setup and project workspaces](docs/setup-and-workspaces.md) for setup, import behavior, and task execution.
+
 ## New in 0.4.0
 
 - Guided maintenance workflows and local machine setup profiles.
@@ -60,12 +69,12 @@ Read [Workflows, profiles, and recovery verification](docs/operations.md) for se
 
 **[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-| Package         | Download v0.4.0                                                                                                                 | Install the downloaded file                            |
+| Package         | Download v0.5.0                                                                                                                 | Install the downloaded file                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.4.0/command-center_0.4.0_amd64.deb)     | `sudo apt install ./command-center_0.4.0_amd64.deb`    |
-| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.4.0/command-center-0.4.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.4.0-1.x86_64.rpm` |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.0/command-center_0.5.0_amd64.deb)     | `sudo apt install ./command-center_0.5.0_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.0/command-center-0.5.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.5.0-1.x86_64.rpm` |
 
-Version 0.4.0 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. Release notes identify the build environment and completed distribution checks. Release assets include `SHA256SUMS` for verification.
+Version 0.5.0 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. Release notes identify the build environment and completed distribution checks. Release assets include `SHA256SUMS` for verification.
 
 For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 

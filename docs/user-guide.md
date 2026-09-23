@@ -70,7 +70,7 @@ In **System integrations**, choose **Check availability** to inspect the current
 
 ## Stage and commit repository changes
 
-Open a repository's **Details** to select whole files and choose **Stage selected**, **Stage all**, or **Unstage selected**. Each action uses the existing command review and Activity system. Stage all includes new files and deletions while respecting Git's ignore rules. Unstage changes only the index; it leaves working files on disk.
+Open a repository's **Workspace** (called **Details** in 0.4.0) to select whole files and choose **Stage selected**, **Stage all**, or **Unstage selected**. Each action uses the existing command review and Activity system. Stage all includes new files and deletions while respecting Git's ignore rules. Unstage changes only the index; it leaves working files on disk.
 
 Review the **Staged diff**, enter a message, and choose **Review & commit**. A file can have both staged and unstaged edits; only staged contents are committed. Command Center checks the staged tree, current commit, and branch again before starting. If they changed since the preview, refresh Details and review again. Changes by other Git tools after that final check remain possible, so avoid concurrent Git operations in the same repository.
 
@@ -78,7 +78,7 @@ A successful commit is local. Use **Push** separately to publish it. Normal Git 
 
 ## Review changes and branches
 
-In repository **Details**, click a filename to view its diff, then use **Staged** and **Unstaged** to compare index and working-tree contents. **All tracked files** returns to the combined diff; new files have an individual preview before staging. Additions and deletions are colored and retain their +/− prefixes. Binary files receive a summary. Oversized previews are labeled as truncated.
+In repository **Workspace**, click a filename to view its diff, then use **Staged** and **Unstaged** to compare index and working-tree contents. **All tracked files** returns to the combined diff; new files have an individual preview before staging. Additions and deletions are colored and retain their +/− prefixes. Binary files receive a summary. Oversized previews are labeled as truncated.
 
 Git operations keep Details open. Status, exit code, and available output appear below the commit controls; **View Activity** opens the operation history. A failed commit retains its draft message. **Refresh details** reloads the file list and diff. Commands remain subject to review before execution.
 
@@ -163,3 +163,7 @@ A failed or unavailable check is never shown as “up to date.” Zero entries f
 ## Workflows, machine profiles, and personal tools
 
 See [Workflows, profiles, and recovery verification](operations.md) for the new recipe editor, personal Toolbox catalog, checksum recovery tests, change timeline, and notification/tray preferences.
+
+## Setup and project workspaces (0.5.0)
+
+See [Setup bundles, onboarding, and project workspaces](setup-and-workspaces.md) for reviewed setup transfer, first-run detection, repository tasks, and keyboard navigation.

@@ -10,7 +10,7 @@ export function normalizeIntegrations(value = {}) {
     : typeof v[key] === 'string' && v[key].length <= 4096 && !/[\0\r\n]/.test(v[key]) ? v[key].trim() : fallback]));
 }
 export const defaults = Object.freeze({
-  customActions: [], integrations: integrationDefaults, displayName: 'Commander', editor: 'auto', terminal: 'auto', accent: 'cyan',
+  setupCompleted: false, customActions: [], integrations: integrationDefaults, displayName: 'Commander', editor: 'auto', terminal: 'auto', accent: 'cyan',
   density: 'comfortable', reducedMotion: false, startupPage: 'dashboard',
   theme: 'dark', textSize: 'normal', repoLayout: 'cards', repoSort: 'name', showPaths: true, showHero: true,
   refreshSeconds: 0, scanDepth: 3, roots: ['~/github/projects', '~/dotfiles']
@@ -19,6 +19,7 @@ export function normalize(input = {}) {
   const s = input && typeof input === 'object' ? input : {};
   const choice = (key, choices) => choices.includes(s[key]) ? s[key] : defaults[key];
   return {
+    setupCompleted: s.setupCompleted === true,
     customActions: normalizeActions(s.customActions),
     integrations: normalizeIntegrations(s.integrations),
     theme: choice('theme', ['dark','light','system']), textSize: choice('textSize', ['normal','large']),

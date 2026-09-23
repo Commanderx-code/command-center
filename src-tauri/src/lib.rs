@@ -18,6 +18,7 @@ mod terminal;
 mod toolbox;
 mod toolbox_updates;
 mod workspace;
+mod setup;
 
 use repositories::{discover_repositories, open_repository};
 
@@ -38,6 +39,14 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            setup::setup_environment,
+            setup::setup_import_state,
+            setup::create_setup_bundle,
+            setup::preview_setup_bundle,
+            setup::export_setup_bundle,
+            setup::import_setup_bundle,
+            setup::assess_setup_profile,
+            workspace::detect_project_tasks,
             operations::load_operations,
             operations::save_operations,
             operations::record_recovery_baseline,

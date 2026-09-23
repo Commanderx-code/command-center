@@ -1,26 +1,36 @@
-Command Center 0.4.0 adds complete workstation routines alongside the expanded Git, service, backup, and Toolbox interfaces.
+Command Center 0.5.0 adds portable workstation setups and project workspaces.
 
-### New workflows
+### What's new
 
-- Save maintenance sequences with command review before each step, visible progress, failure stops, and explicit retries.
-- Create local machine setup profiles with repository clones, Toolbox installers, presence checks, and Home Manager source overrides.
-- Organize personal tools in folders with descriptions, prerequisites, and typed inputs passed as literal arguments.
-- Restore individual backup files into a temporary directory and verify them against recorded SHA-256 baselines.
-- Search app-recorded changes across jobs and configuration backups in the timeline.
-- Opt into task and health notifications with quiet hours; use the tray to hide or reopen the app.
+- **Setup bundles:** export saved preferences, repository paths and workspace profiles, workflows, machine profiles, personal tools, and Toolbox favorites together. Preview imports, remap home-directory paths, and keep a private backup before replacing saved definitions. Importing starts no commands.
+- **Setup wizard:** connect existing Commander-os/Home Manager and Restic helpers through editable drafts, check local prerequisites, inspect a machine profile, then review and save.
+- **Project workspaces:** save per-repository build/test/dev tasks, discover npm and Cargo task suggestions without executing scripts, and link services for status/log inspection. Every task uses command review and Activity; embedded tasks open in Terminal.
+- **Keyboard access:** skip to main content, navigate primary pages with arrow keys/Home/End, and use clearer focus and active-page semantics. OS reduced-motion preferences are respected.
 
-### Also included since 0.3.3
-
-Git file diffs, branches, stashes, branch publishing, service controls and audit helpers, backup schedules and readiness/access checks, configuration history, settings transfer, custom quick actions, the command palette, system inventory, release checks, and Toolbox/package update workflows.
+Existing workflow, Toolbox, backup, Git, configuration, notification, and tray features remain available. See the [setup and workspace guide](https://github.com/Commanderx-code/command-center/blob/v0.5.0/docs/setup-and-workspaces.md).
 
 ### Linux downloads
 
-The `.deb` and `.rpm` assets target **x86_64** and require **glibc 2.39+, GTK 3, WebKitGTK 4.1, and the platform's AppIndicator library**. Notifications additionally use `notify-send`. File restores require Restic 0.17+; older versions receive a compatibility error before a restore starts. Install your downloaded package with `sudo apt install ./command-center_0.4.0_amd64.deb` or `sudo dnf install ./command-center-0.4.0-1.x86_64.rpm` on a compatible distribution.
+The `.deb` and `.rpm` assets target **x86_64** and require **glibc 2.39+, GTK 3, WebKitGTK 4.1, and the platform's AppIndicator library**. Notifications additionally use `notify-send`. File restores require Restic 0.17+.
 
-Download `SHA256SUMS` beside the package and run `sha256sum --check --ignore-missing SHA256SUMS`.
+```sh
+# Debian / Ubuntu
+sudo apt install ./command-center_0.5.0_amd64.deb
 
-A local Arch build recipe is included under `packaging/aur/`; it has not been submitted to AUR. See the workflow run and validation details below for tested environments.
+# Fedora / RPM
+sudo dnf install ./command-center-0.5.0-1.x86_64.rpm
+```
+
+Download `SHA256SUMS` beside the package and run:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+A local Arch build recipe is included under `packaging/aur/`; it has not been submitted to AUR or validated in a clean Arch chroot.
 
 ### Behavior to know
 
-Workflows require review for each step. Profiles configure this computer and do not manage remote hosts. Recovery verification proves the selected file matches its recorded baseline, not that the entire system is recoverable. Notifications run while the app is open. The timeline covers app-recorded changes. Details: [operations guide](https://github.com/Commanderx-code/command-center/blob/v0.4.0/docs/operations.md).
+Setup imports replace the reviewed saved collections rather than merging them. Credential files, wallet identifiers, file contents, activity logs, and recovery baselines are excluded; saved command text is included and should be inspected before sharing. Structured paths are remapped, but command text and arbitrary input values are unchanged. Existing local credential connections are retained. Missing repositories are remembered for scanning, not cloned automatically.
+
+A running job blocks import. Previous data is backed up before replacement and ordinary write failures are rolled back; recovery after a crash during the multi-file import may require restoring that backup manually. Machine profiles operate locally, and each command still requires review. The existing one-running-job limit also applies to project tasks.

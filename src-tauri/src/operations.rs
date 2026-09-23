@@ -76,7 +76,7 @@ fn label(s: &str) -> bool {
     !s.trim().is_empty() && s.len() <= 160 && !s.contains(['\0', '\n', '\r'])
 }
 impl Collection {
-    fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<(), String> {
         if self.workflows.len() > 30 || self.profiles.len() > 20 || self.tools.len() > 100 {
             return Err("Collection limit reached".into());
         }
@@ -236,6 +236,7 @@ pub fn load_operations(app: tauri::AppHandle) -> Result<Collection, String> {
 }
 #[tauri::command]
 pub fn save_operations(app: tauri::AppHandle, collection: Collection) -> Result<(), String> {
+    let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     collection.validate()?;
     p::save(&p::data_file(&app, "operations.json")?, &collection)
 }
