@@ -186,6 +186,24 @@ mod tests {
         assert!(snapshot(path).unwrap()["files"].as_array().unwrap().iter().any(|f| f["path"] == "a1.txt" && f["staged"] == false));
     }
     #[test]
+    fn reviewed_commit_keeps_local_hooks_enabled() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = fixture();
+        let path = dir.path();
+        let hook = path.join(".git/hooks/pre-commit");
+        fs::write(&hook, "#!/bin/sh\ntouch reviewed-hook-ran\n").unwrap();
+        fs::set_permissions(&hook, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::write(path.join(".gitattributes"), "file filter=fixture\n").unwrap();
+        git(path, &["config", "filter.fixture.clean", "tr a-z A-Z"]).unwrap();
+        fs::write(path.join("file"), "contents\n").unwrap();
+        execute(&request(path, "stage-all", &[]));
+        let commit = commit_request(path);
+        assert!(!path.join("reviewed-hook-ran").exists());
+        execute(&commit);
+        assert!(path.join("reviewed-hook-ran").exists());
+        assert_eq!(git(path, &["show", "HEAD:file"]).unwrap(), "CONTENTS\n");
+    }
+    #[test]
     fn stale_review_empty_message_and_invalid_paths_are_rejected() {
         let dir = fixture(); let path = dir.path();
         fs::write(path.join("file"), "one").unwrap();

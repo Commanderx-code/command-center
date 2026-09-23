@@ -14,6 +14,20 @@ test('settings export round trip retains actions; default import preserves machi
   assert.deepEqual(importDraft(current,parsed,true),imported);
   assert.equal(current.theme,'dark');
 });
+test('all settings imports preserve the locally configured automatic health helper',()=>{
+  for (const local of ['', '/here/health']) {
+    for (const incoming of ['', '~/download/health', '/there/health']) {
+      for (const includeMachine of [false,true]) {
+        const current=normalize({integrations:{backupHealthScript:local}});
+        const imported=normalize({integrations:{backupHealthScript:incoming,dotfilesPath:'/there/dotfiles'}});
+        const draft=importDraft(current,imported,includeMachine);
+        assert.equal(draft.integrations.backupHealthScript,local);
+        assert.equal(draft.integrations.dotfilesPath,includeMachine?'/there/dotfiles':'');
+        assert.equal(imported.integrations.backupHealthScript,incoming);
+      }
+    }
+  }
+});
 test('imports reject unsupported versions, invalid enums, malformed actions and oversized input',()=>{
   const encode=settings=>JSON.stringify({format:'command-center-settings',version:1,settings});
   assert.throws(()=>parseSettingsExport('{'));

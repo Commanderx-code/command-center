@@ -74,7 +74,11 @@ Open a repository's **Workspace** (called **Details** in 0.4.0) to select whole 
 
 Review the **Staged diff**, enter a message, and choose **Review & commit**. A file can have both staged and unstaged edits; only staged contents are committed. Command Center checks the staged tree, current commit, and branch again before starting. If they changed since the preview, refresh Details and review again. Changes by other Git tools after that final check remain possible, so avoid concurrent Git operations in the same repository.
 
-A successful commit is local. Use **Push** separately to publish it. Normal Git hooks, identity and signing settings remain active. If hooks or signing require interactive input, use the repository Terminal button. Conflicts and active merge/rebase/cherry-pick workflows must be finished in the terminal or editor. Large staged diffs and non-UTF-8 filenames require terminal review. Commit messages remain as session drafts after errors or cancelled review; they are cleared after a successful app commit. Details refreshes after a staging or commit job completes while the dialog is open.
+A successful commit is local. Use **Push** separately to publish it. Normal Git hooks, content filters, identity and signing settings remain active for reviewed actions. If hooks or signing require interactive input, use the repository Terminal button.
+
+Automatic repository inspection disables hooks, fsmonitor commands, external diff/text conversion, signature verification, content filters, and automatic fetching of missing objects. Partial clones with missing objects need an explicit fetch in the terminal before inspection. Files normally normalized by a filter may appear changed in these previews; use the repository terminal for a filter-aware comparison. Nested submodule working-file changes are omitted; changed submodule commits remain visible. Open a submodule directly to inspect its files. Unsupported or oversized filter configuration makes inspection unavailable.
+
+Conflicts and active merge/rebase/cherry-pick workflows must be finished in the terminal or editor. Large staged diffs and non-UTF-8 filenames require terminal review. Commit messages remain as session drafts after errors or cancelled review; they are cleared after a successful app commit. Details refreshes after a staging or commit job completes while the dialog is open.
 
 ## Review changes and branches
 
@@ -88,7 +92,7 @@ The **Branches** controls list local branches and support **Switch branch** and 
 
 **Export saved settings** writes a versioned JSON file to Downloads in the desktop app. In browser preview it downloads a JSON file. The export contains saved preferences, integration paths, and custom commands; it does not read the contents of credential files or KWallet.
 
-**Import settings** opens a preview. Machine paths, editor/terminal selections, scan depth, integration settings, and custom commands remain from this device by default. Select the checkbox to include them from the export. **Apply to draft** updates the settings form; **Save settings** persists it, and **Discard changes** restores the saved configuration. Importing and saving commands never runs them.
+**Import settings** opens a preview. Machine paths, editor/terminal selections, scan depth, integration settings, and custom commands remain from this device by default. Select the checkbox to include them from the export. The automatic backup health helper always retains this device’s current value; configure it separately in Settings. **Apply to draft** updates the settings form; **Save settings** persists it, and **Discard changes** restores the saved configuration. Importing and saving commands never runs them.
 
 ## Custom quick actions
 

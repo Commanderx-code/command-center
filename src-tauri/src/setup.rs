@@ -179,6 +179,8 @@ fn prepare(text: &str, target: &str, current: &Settings) -> Result<Bundle, Strin
     bundle.remap(target)?;
     let i = &mut bundle.settings.integrations;
     let old = &current.integrations;
+    // Health checks run automatically; imports cannot authorize a new executable.
+    i.backup_health_script = old.backup_health_script.clone();
     i.restic_password_file = old.restic_password_file.clone();
     i.wallet = old.wallet.clone();
     i.wallet_folder = old.wallet_folder.clone();
@@ -422,6 +424,51 @@ mod tests {
             "/home/older/repo"
         );
         assert!(!imported.settings.setup_completed);
+    }
+    #[test]
+    fn imported_health_helpers_never_replace_or_execute_in_place_of_local_helpers() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let marker = temp.path().join("imported-ran");
+        let helper = temp.path().join("health");
+        fs::write(
+            &helper,
+            format!("#!/bin/sh\ntouch '{}'\nprintf '{{}}'\n", marker.display()),
+        )
+        .unwrap();
+        fs::set_permissions(&helper, fs::Permissions::from_mode(0o700)).unwrap();
+        let local = temp.path().join("local-health");
+        fs::write(&local, "#!/bin/sh\nprintf '{\"local\":true}'\n").unwrap();
+        fs::set_permissions(&local, fs::Permissions::from_mode(0o700)).unwrap();
+        for configured in [String::new(), local.to_string_lossy().into_owned()] {
+            let mut current = Settings::default();
+            current.integrations.backup_health_script = configured.clone();
+            for incoming in [
+                helper.to_string_lossy().into_owned(),
+                "/home/old/health".into(),
+                "~/health".into(),
+                String::new(),
+            ] {
+                let mut b = bundle();
+                b.settings.integrations.backup_health_script = incoming;
+                let imported = prepare(
+                    &serde_json::to_string(&b).unwrap(),
+                    temp.path().to_str().unwrap(),
+                    &current,
+                )
+                .unwrap();
+                let report = crate::health::backup_report(&imported.settings);
+                assert!(!marker.exists(), "imported helper executed");
+                assert_eq!(
+                    imported.settings.integrations.backup_health_script,
+                    configured
+                );
+                assert_eq!(report["available"], !configured.is_empty());
+                if !configured.is_empty() {
+                    assert_eq!(report["data"]["local"], true);
+                }
+            }
+        }
     }
     #[test]
     fn redaction_removes_credential_references_and_remote_repository_addresses() {

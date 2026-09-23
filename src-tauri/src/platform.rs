@@ -162,15 +162,77 @@ pub fn output(command: &mut Command, seconds: u64) -> Result<(bool, String, Stri
         stderr.join().unwrap_or_default(),
     ))
 }
+/// Local inspection must not authorize executable repository configuration.
+/// Reviewed jobs use Plan::command instead and retain normal Git extensions.
 pub fn git(path: &Path, args: &[&str]) -> Result<String, String> {
-    let (ok, out, err) = output(
-        Command::new("git")
-            .arg("-C")
-            .arg(path)
-            .args(args)
-            .env("GIT_TERMINAL_PROMPT", "0"),
+    let mut command = Command::new("git");
+    command
+        .arg("-C")
+        .arg(path)
+        .args([
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "log.showSignature=false",
+            "-c",
+            "diff.submodule=short",
+        ])
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_NO_LAZY_FETCH", "1")
+        .env("GIT_ALLOW_PROTOCOL", "");
+    // Status/diff may invoke clean or long-running process filters. Enumerate
+    // effective keys (including includes/worktree config), without running them.
+    let (ok, keys, err) = output(
+        Command::new("git").arg("-C").arg(path).args([
+            "config",
+            "--includes",
+            "--null",
+            "--name-only",
+            "--list",
+        ]),
         15,
     )?;
+    if !ok {
+        return Err(err.trim().to_string());
+    }
+    if keys.len() >= 4_000_000
+        || keys.contains('\u{fffd}')
+        || (!keys.is_empty() && !keys.ends_with('\0'))
+    {
+        return Err("Cannot safely inspect Git configuration; use the repository terminal".into());
+    }
+    let mut filters = std::collections::BTreeSet::new();
+    for key in keys.split_terminator('\0') {
+        if let Some(rest) = key.strip_prefix("filter.") {
+            if let Some((name, _)) = rest.rsplit_once('.') {
+                filters.insert(name);
+            }
+        }
+    }
+    if filters.len() > 1024 || filters.iter().any(|name| name.contains('=')) {
+        return Err("Unsupported Git filter configuration; use the repository terminal".into());
+    }
+    for name in filters {
+        for setting in ["clean=", "smudge=", "process=", "required=false"] {
+            command.arg("-c").arg(format!("filter.{name}.{setting}"));
+        }
+    }
+    if let Some((subcommand, rest)) = args.split_first() {
+        command.arg(subcommand);
+        // A nested worktree has its own filters. Report gitlink changes without
+        // recursively inspecting unreviewed submodule working files.
+        if matches!(*subcommand, "status" | "diff") {
+            command.arg("--ignore-submodules=dirty");
+        }
+        if *subcommand == "diff" {
+            command.args(["--no-ext-diff", "--no-textconv"]);
+        }
+        command.args(rest);
+    }
+    let (ok, out, err) = output(&mut command, 15)?;
     if ok {
         Ok(out)
     } else {
@@ -181,6 +243,276 @@ pub fn git(path: &Path, args: &[&str]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn fixture_git(path: &Path, args: &[&str]) {
+        let result = Command::new("git")
+            .arg("-C")
+            .arg(path)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    fn fixture_head(path: &Path, tree: &str, signature: &str) {
+        use std::io::Write;
+        let commit = format!("tree {tree}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n{signature}\nmessage\n");
+        let mut child = Command::new("git")
+            .arg("-C")
+            .arg(path)
+            .args(["hash-object", "-t", "commit", "-w", "--stdin"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(commit.as_bytes())
+            .unwrap();
+        let result = child.wait_with_output().unwrap();
+        assert!(result.status.success());
+        fixture_git(
+            path,
+            &[
+                "update-ref",
+                "HEAD",
+                String::from_utf8_lossy(&result.stdout).trim(),
+            ],
+        );
+    }
+    #[test]
+    fn passive_git_blocks_signature_verifiers_and_promisor_transports() {
+        use std::os::unix::fs::PermissionsExt;
+        for kind in ["signature", "promisor"] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path();
+            fixture_git(path, &["init"]);
+            let marker = path.join("extension-ran");
+            let hook = path.join("probe-hook");
+            fs::write(
+                &hook,
+                format!("#!/bin/sh\ntouch '{}'\nexit 1\n", marker.display()),
+            )
+            .unwrap();
+            fs::set_permissions(&hook, fs::Permissions::from_mode(0o700)).unwrap();
+            let args: &[&str] = if kind == "signature" {
+                fixture_git(path, &["config", "log.showSignature", "true"]);
+                fixture_git(path, &["config", "gpg.program", hook.to_str().unwrap()]);
+                let tree = Command::new("git")
+                    .arg("-C")
+                    .arg(path)
+                    .arg("mktree")
+                    .stdin(Stdio::null())
+                    .output()
+                    .unwrap();
+                assert!(tree.status.success());
+                fixture_head(path, String::from_utf8_lossy(&tree.stdout).trim(), "gpgsig -----BEGIN PGP SIGNATURE-----\n \n invalid\n -----END PGP SIGNATURE-----\n");
+                &["log", "-1", "--format=%s"]
+            } else {
+                fixture_head(path, &"1".repeat(40), "");
+                for (key, value) in [
+                    ("core.repositoryformatversion", "1"),
+                    ("extensions.partialClone", "origin"),
+                    ("remote.origin.promisor", "true"),
+                    ("remote.origin.url", path.to_str().unwrap()),
+                    ("remote.origin.uploadpack", hook.to_str().unwrap()),
+                ] {
+                    fixture_git(path, &["config", key, value]);
+                }
+                &["status", "--porcelain"]
+            };
+            // Positive attack control: ordinary Git executes this fixture.
+            let _ = Command::new("git")
+                .arg("-C")
+                .arg(path)
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(marker.exists(), "{kind} fixture did not execute");
+            fs::remove_file(&marker).unwrap();
+            let result = git(path, args);
+            assert!(
+                !marker.exists(),
+                "{kind} executed during passive inspection"
+            );
+            if kind == "signature" {
+                assert_eq!(result.unwrap().trim(), "message");
+            } else {
+                assert!(
+                    result.is_err(),
+                    "missing objects must make inspection unavailable"
+                );
+            }
+        }
+    }
+    #[test]
+    fn passive_git_does_not_run_fsmonitor_hooks_or_content_filters() {
+        use std::os::unix::fs::PermissionsExt;
+        for extension in [
+            "fsmonitor",
+            "post-index-change",
+            "clean",
+            "process",
+            "textconv",
+            "external-diff",
+            "included-filter",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path();
+            fixture_git(path, &["init", "-b", "main"]);
+            fs::write(path.join("tracked"), "original\n").unwrap();
+            fixture_git(path, &["add", "tracked"]);
+            let hook = path.join("probe-hook");
+            fs::write(&hook, "#!/bin/sh\ntouch extension-ran\nexit 1\n").unwrap();
+            fs::set_permissions(&hook, fs::Permissions::from_mode(0o700)).unwrap();
+            match extension {
+                "fsmonitor" => {
+                    fixture_git(path, &["config", "core.fsmonitor", hook.to_str().unwrap()])
+                }
+                "post-index-change" => {
+                    fs::rename(&hook, path.join(".git/hooks/post-index-change")).unwrap();
+                    // Force a refresh of index metadata.
+                    fs::write(path.join("tracked"), "original\n").unwrap();
+                }
+                "textconv" => {
+                    fs::write(path.join(".gitattributes"), "tracked diff=fixture\n").unwrap();
+                    fixture_git(
+                        path,
+                        &["config", "diff.fixture.textconv", hook.to_str().unwrap()],
+                    );
+                    fs::write(path.join("tracked"), "changed contents\n").unwrap();
+                }
+                "external-diff" => {
+                    fixture_git(path, &["config", "diff.external", hook.to_str().unwrap()]);
+                    fs::write(path.join("tracked"), "changed contents\n").unwrap();
+                }
+                "included-filter" => {
+                    fs::write(path.join(".gitattributes"), "tracked filter=Mixed.case\n").unwrap();
+                    fs::write(
+                        path.join(".git/extra-config"),
+                        format!(
+                            "[filter \"Mixed.case\"]\nclean = {}\nrequired = true\n",
+                            hook.display()
+                        ),
+                    )
+                    .unwrap();
+                    fixture_git(path, &["config", "include.path", "extra-config"]);
+                    fs::write(path.join("tracked"), "changed contents\n").unwrap();
+                }
+                field => {
+                    fs::write(path.join(".gitattributes"), "tracked filter=fixture\n").unwrap();
+                    fixture_git(
+                        path,
+                        &[
+                            "config",
+                            &format!("filter.fixture.{field}"),
+                            hook.to_str().unwrap(),
+                        ],
+                    );
+                    fixture_git(path, &["config", "filter.fixture.required", "true"]);
+                    fs::write(path.join("tracked"), "changed contents\n").unwrap();
+                }
+            }
+            let status = git(path, &["status", "--porcelain"]);
+            assert!(!path.join("extension-ran").exists(), "{extension} executed");
+            assert!(status.is_ok(), "{extension}: {status:?}");
+            git(path, &["diff"]).unwrap();
+            assert!(
+                !path.join("extension-ran").exists(),
+                "{extension} executed during diff"
+            );
+        }
+    }
+    #[test]
+    fn passive_git_skips_nested_filters_but_reports_changed_submodule_commits() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        fixture_git(path, &["init"]);
+        let child = path.join("child");
+        fs::create_dir(&child).unwrap();
+        fixture_git(&child, &["init"]);
+        fs::write(child.join("tracked"), "original\n").unwrap();
+        fixture_git(&child, &["add", "tracked"]);
+        fixture_git(
+            &child,
+            &[
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "-m",
+                "initial",
+            ],
+        );
+        fixture_git(path, &["add", "child"]);
+        let hook = child.join("filter-hook");
+        fs::write(&hook, "#!/bin/sh\ntouch nested-filter-ran\ncat\n").unwrap();
+        fs::set_permissions(&hook, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::write(child.join(".gitattributes"), "tracked filter=nested\n").unwrap();
+        fixture_git(
+            &child,
+            &["config", "filter.nested.clean", hook.to_str().unwrap()],
+        );
+        fs::write(child.join("tracked"), "modified\n").unwrap();
+        git(path, &["status", "--porcelain"]).unwrap();
+        git(path, &["diff"]).unwrap();
+        assert!(!child.join("nested-filter-ran").exists());
+        fixture_git(path, &["config", "diff.submodule", "diff"]);
+        fixture_git(
+            &child,
+            &["config", "diff.fixture.textconv", hook.to_str().unwrap()],
+        );
+        fs::write(
+            child.join(".gitattributes"),
+            "tracked filter=nested diff=fixture\n",
+        )
+        .unwrap();
+        fixture_git(&child, &["add", "tracked", ".gitattributes"]);
+        // An explicit action in the child can change its commit; inspection of
+        // the parent still sees that gitlink change without scanning child files.
+        fixture_git(
+            &child,
+            &[
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "next",
+            ],
+        );
+        let _ = fs::remove_file(child.join("nested-filter-ran"));
+        fixture_git(
+            path,
+            &[
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--ignore-submodules=dirty",
+            ],
+        );
+        assert!(
+            child.join("nested-filter-ran").exists(),
+            "nested textconv fixture did not execute"
+        );
+        fs::remove_file(child.join("nested-filter-ran")).unwrap();
+        let status = git(path, &["status", "--porcelain"]).unwrap();
+        git(path, &["diff"]).unwrap();
+        assert!(status.contains("AM child"), "{status}");
+        assert!(!child.join("nested-filter-ran").exists());
+    }
     #[test]
     fn timeout_stops_commands_without_waiting_for_inherited_pipes() {
         let start = Instant::now();

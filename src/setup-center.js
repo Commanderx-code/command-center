@@ -302,7 +302,7 @@ export function createSetupCenter({
       : "Review setup import";
     $("#bundle-description").textContent = isExport
       ? "Exports saved definitions. Unsaved drafts are not included."
-      : "Import replaces the listed saved definitions. A backup is kept, and the app reloads after import. Missing repositories are remembered for scanning; their files are not cloned.";
+      : "Import replaces the listed saved definitions. A backup is kept, and the app reloads after import. Missing repositories are remembered for scanning; their files are not cloned. The automatic backup health helper stays configured for this machine; set it separately in Settings.";
     $("#bundle-home-label").hidden = isExport;
     $("#bundle-preview").hidden = isExport;
     $("#bundle-consent-label").hidden = isExport;

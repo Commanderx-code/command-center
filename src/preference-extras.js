@@ -18,7 +18,10 @@ export function parseSettingsExport(text) {
   return normalized;
 }
 export function importDraft(current, imported, includeMachine) {
-  return normalize({ ...imported, ...(!includeMachine ? Object.fromEntries(['roots','editor','terminal','scanDepth','integrations','customActions'].map(k => [k,current[k]])) : {}) });
+  const draft = normalize({ ...imported, ...(!includeMachine ? Object.fromEntries(['roots','editor','terminal','scanDepth','integrations','customActions'].map(k => [k,current[k]])) : {}) });
+  // This helper runs automatically, so importing settings must not authorize it.
+  draft.integrations.backupHealthScript = normalize(current).integrations.backupHealthScript;
+  return draft;
 }
 export function createPreferenceExtras({ state, $, escapeHtml: e, draftPreferences, populatePreferences, updateDraftStatus, action, toast, invoke }) {
   let actions = [];
@@ -26,7 +29,7 @@ export function createPreferenceExtras({ state, $, escapeHtml: e, draftPreferenc
   $('.settings-layout').insertAdjacentHTML('beforeend', `<section id="section-custom" class="panel settings-section"><div class="section-title"><span>06</span><div><h3>Custom quick actions</h3><p>Pin commands to the dashboard. Every run is reviewed first.</p></div></div><div id="custom-actions-editor"></div><button type="button" class="secondary-button" id="add-custom-action">Add action</button><p class="settings-help">Direct commands use quoted arguments without shell expansion. Choose Fish for functions such as full-upgrade. Terminal modes support interactive prompts. Keep passwords out of saved commands and exports.</p></section>`);
   $('.settings-links').insertAdjacentHTML('beforeend','<a href="#section-custom">Custom actions</a>');
   $('.settings-intro').insertAdjacentHTML('afterend', `<div class="button-row settings-transfer"><button type="button" id="export-settings" class="secondary-button">Export saved settings</button><button type="button" id="import-settings" class="secondary-button">Import settings…</button><input type="file" id="import-settings-file" accept=".json,application/json" hidden><span id="transfer-status" role="status"></span></div>`);
-  document.body.insertAdjacentHTML('beforeend', `<dialog id="import-settings-dialog" class="review-dialog"><h2>Review settings import</h2><p>Your current preferences stay saved until you apply this draft and Save settings.</p><label class="check-row"><input type="checkbox" id="import-machine">Include machine paths, applications, integrations, and custom commands</label><p class="settings-help">Leave unchecked to keep this machine’s connections and commands.</p><pre id="import-preview" class="output"></pre><div class="button-row"><button type="button" id="cancel-import" class="secondary-button">Cancel</button><button type="button" id="apply-import" class="primary-button">Apply to draft</button></div></dialog>`);
+  document.body.insertAdjacentHTML('beforeend', `<dialog id="import-settings-dialog" class="review-dialog"><h2>Review settings import</h2><p>Your current preferences stay saved until you apply this draft and Save settings.</p><label class="check-row"><input type="checkbox" id="import-machine">Include machine paths, applications, integrations, and custom commands</label><p class="settings-help">Leave unchecked to keep this machine’s connections and commands. The automatic backup health helper always stays local; configure it separately in Settings.</p><pre id="import-preview" class="output"></pre><div class="button-row"><button type="button" id="cancel-import" class="secondary-button">Cancel</button><button type="button" id="apply-import" class="primary-button">Apply to draft</button></div></dialog>`);
   $('#dashboard-view').insertAdjacentHTML('beforeend', '<section class="panel module-panel"><div class="panel-heading"><h3>Your quick actions</h3><button type="button" class="secondary-button" id="manage-custom">Manage actions</button></div><div id="custom-action-buttons" class="button-row"></div></section>');
   function changed() { updateDraftStatus(); }
   function read() {

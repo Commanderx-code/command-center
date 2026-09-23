@@ -481,7 +481,11 @@ mod workflow_tests {
     use super::*;
     use std::path::PathBuf;
     fn git(path: &Path, args: &[&str]) -> String {
-        p::git(path, args).unwrap()
+        // Fixture setup includes intentional clones and pushes, unlike probes.
+        let (ok, out, err) =
+            p::output(Command::new("git").arg("-C").arg(path).args(args), 15).unwrap();
+        assert!(ok, "{err}");
+        out
     }
     fn commit(path: &Path, name: &str) {
         fs::write(path.join(name), name).unwrap();
