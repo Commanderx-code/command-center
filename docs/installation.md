@@ -6,7 +6,7 @@
 
 Download a package and `SHA256SUMS` from the [GitHub releases page](https://github.com/Commanderx-code/command-center/releases/latest).
 
-The v0.5.1 packages target **Linux x86_64 / amd64** and require **glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1**. Packages declare these dependencies. The release workflow builds the Debian package on Ubuntu 24.04 and the RPM on Fedora 43, installs each matching package, and performs a desktop launch check. See the release notes for the successful workflow run and exact validation results. ARM, Windows, and macOS packages are not currently published.
+Packages target **Linux x86_64 / amd64** and require **GTK 3, WebKitGTK 4.1, and glibc 2.35 or newer** from 0.6.0 (0.5.x packages require glibc 2.39). Packages declare these dependencies. Both packages are built once on Ubuntu 22.04, then installed and launched on Ubuntu 22.04, Debian 12, Ubuntu 24.04, and Fedora 43. See the release notes for the workflow run. ARM, Windows, and macOS packages are not currently published.
 
 To verify a downloaded package, put it and `SHA256SUMS` in the same directory and run:
 
@@ -19,13 +19,13 @@ Each downloaded package must report `OK`. The `--ignore-missing` option lets you
 On a compatible Debian/Ubuntu system:
 
 ```bash
-sudo apt install ./command-center_0.5.1_amd64.deb
+sudo apt install ./command-center_0.6.0_amd64.deb
 ```
 
 On a compatible Fedora/RPM system:
 
 ```bash
-sudo dnf install ./command-center-0.5.1-1.x86_64.rpm
+sudo dnf install ./command-center-0.6.0-1.x86_64.rpm
 ```
 
 Launch **Command Center** from your application menu. Run the app as your normal user, without `sudo`.

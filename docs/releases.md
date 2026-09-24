@@ -5,7 +5,7 @@
 Open Settings → About & updates. Check for releases, read the notes, then export the source updater. Close Command Center and run the displayed command, for example:
 
 ```sh
-bash ~/Downloads/update-desktop.sh v0.5.1
+bash ~/Downloads/update-desktop.sh v0.6.0
 ```
 
 The helper requires Linux build dependencies, Git, Node/npm, and Rust/Cargo. Run as your normal user, without sudo. It asks you to type the tag, downloads that tag into a temporary checkout, checks its package version, installs dependencies, runs JavaScript and Rust tests, then builds and installs the desktop app. A failed check stops installation. It does not modify your project checkout or app settings. The GitHub tag must already exist; the release checker only advertises published stable releases. Offline/API errors are shown without claiming that the installed version is current. GitHub is contacted only when you request a release check or open its release page.
@@ -25,21 +25,37 @@ This rolls back the binary only, not settings or user data. It applies to the no
 Keep package.json, package-lock.json, Cargo.toml, Cargo.lock, and tauri.conf.json versions aligned. Update docs/release-notes.md and CHANGELOG.md. Commit and push the reviewed source, then create and push an annotated tag matching the version:
 
 ```sh
-git tag -a v0.5.1 -m 'Command Center v0.5.1'
-git push origin v0.5.1
-npm run release:draft -- v0.5.1
+git tag -a v0.6.0 -m 'Command Center v0.6.0'
+git push origin v0.6.0
+npm run release:draft -- v0.6.0
 ```
 
-The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag, runs checks, tests, and the package build, then creates an **unpublished** GitHub release using docs/release-notes.md. It attaches validated `.deb` and `.rpm` packages plus `SHA256SUMS`. It does not push tags or publish the draft. Review and publish on GitHub after testing the app on your machine. GitHub supplies source archives automatically; this workflow does not claim that a build on Garuda is portable across Linux distributions.
+The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag and runs the checks and tests. It then finds the successful **Linux packages** run for the tagged commit, downloads that run's `packages` artifact, verifies its `SHA256SUMS`, and creates an **unpublished** GitHub release. The release notes are docs/release-notes.md plus a build-and-validation section linking the workflow run. If CI has not passed for the tag, no draft is created. The command never builds release packages locally: a build on a newer distribution such as Garuda would require a newer glibc than the packages declare. It does not push tags or publish the draft. Download and verify the hosted assets and test the app on your machine before publishing.
 
 The app discovers only published releases. Building a package, creating a tag, or preparing a draft does not publish a release.
 
 ## Package validation and distribution CI
 
-The **Linux packages** workflow builds on Ubuntu 24.04 and Fedora 43, validates package metadata and ELF payloads, installs the matching package, and runs a 20-second launch check under a virtual display as an ordinary user. Artifacts are retained by GitHub Actions. This is an installation/launch check, not an end-to-end validation of system-changing workflows.
+The **Linux packages** workflow runs these jobs:
 
-Run `python3 scripts/verify-packages.py` after a local package build to stage named assets and checksums in `artifacts/release/`. Release binaries must have runtime requirements compatible with their declared dependency floor. Hosted release downloads should be downloaded and verified before publication.
+| Job           | What it does                                                                                                                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests`       | JavaScript and Rust tests and clippy as a normal user on Ubuntu 24.04.                                                                               |
+| `build`       | Builds the `.deb` and `.rpm` once in an `ubuntu:22.04` container (glibc 2.35), validates them, and uploads the `packages` artifact with `SHA256SUMS`. |
+| `install-deb` | Installs that `.deb` on Ubuntu 22.04, Debian 12, and Ubuntu 24.04 and runs a 20-second launch check under a virtual display as an ordinary user.      |
+| `install-rpm` | Installs that `.rpm` on Fedora 43 and runs the same launch check.                                                                                    |
+| `arch`        | Builds `packaging/aur/PKGBUILD` from the pushed commit in a clean `archlinux` container, lints the recipe and package with namcap, installs, and launches it. |
 
-For distribution-tested release assets, download the artifacts from a successful **Linux packages** run for the exact release commit. Use the `.deb` from `ubuntu-packages` and the `.rpm` from `fedora-packages`, verify each artifact's checksums, and generate a new `SHA256SUMS` for that selected pair. Attach them to a draft release, download and verify the hosted assets, then publish. Record the workflow URL and validation results in the release notes.
+These are installation and launch checks, not end-to-end validation of system-changing workflows.
 
-`packaging/aur/PKGBUILD` is a local Arch build recipe pinned to the release tag. Run `makepkg -si` from a copy of that directory after the tag is published. This recipe has not been submitted to AUR and has not been validated in a clean Arch chroot. The project license remains unchanged.
+`scripts/verify-packages.py` checks package metadata and payloads, then compares the glibc floor declared in `tauri.conf.json` with the highest glibc symbol version the binary actually requires. It fails if the binary needs a newer glibc than the packages declare. It then stages named assets and checksums in `artifacts/release/`. To raise or lower the floor, change the build container and both `depends` entries together.
+
+## Arch User Repository
+
+`packaging/aur/PKGBUILD` builds the release tag, and `packaging/aur/.SRCINFO` is generated from it. CI validates the recipe on every push. To publish or update the AUR package:
+
+1. After the release tag is published and the `arch` job passed for it, bump `pkgver` (and reset `pkgrel=1`) if not done already, then regenerate the metadata: `cd packaging/aur && makepkg --printsrcinfo > .SRCINFO`.
+2. Clone the AUR repository with an account that has an SSH key registered on aur.archlinux.org: `git clone ssh://aur@aur.archlinux.org/command-center.git`. For the first upload this creates the package.
+3. Copy `PKGBUILD` and `.SRCINFO` into that clone, commit, and push.
+
+AUR packages must declare a `license`. The project does not include a license file yet, so choose a license before submitting.

@@ -57,7 +57,7 @@ npm run desktop:package
 
 Tauri writes `.deb` and `.rpm` packages under `src-tauri/target/release/bundle/`. Keep versions aligned in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json` when preparing a version bump.
 
-The v0.4.0 release packages declare the build's glibc 2.39 minimum. For a future build, inspect its actual runtime requirements before choosing the package dependency floor. Verify package metadata and payloads, publish SHA-256 checksums, and record the build environment and any distribution testing in the release notes.
+Release packages come from CI, which builds on Ubuntu 22.04 and declares a glibc 2.35 floor. A local `desktop:package` build on a newer distribution links against its newer glibc, so `scripts/verify-packages.py` correctly rejects it as a release candidate. See [Releases](releases.md#package-validation-and-distribution-ci).
 
 ## Documentation screenshots
 
