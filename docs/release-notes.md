@@ -6,6 +6,7 @@ Command Center 0.6.0 makes setup imports safer, runs independent jobs side by si
 - **Interrupted imports recover automatically:** imports now keep a journal. If the app or computer stops mid-import, the next launch restores every file from the pre-import backup before the interface opens and tells you on the dashboard.
 - **Run several jobs:** repository actions and project tasks in different repositories run at the same time, alongside one workstation task such as a backup, installer, or Home Manager switch. Jobs in the same folder, and embedded-terminal sessions, still take turns; a waiting job names the job it is waiting for. Stop each job from Activity.
 - **Wider distribution support:** packages now require glibc 2.35+ instead of 2.39, adding Ubuntu 22.04 and Debian 12. Every package is install- and launch-tested on Ubuntu 22.04, Debian 12, Ubuntu 24.04, and Fedora 43, and the Arch recipe is built, linted, and launched in a clean Arch container.
+- **MIT licensed:** Command Center is now released under the MIT License. The `.deb`, `.rpm`, and Arch packages include the license and the bundled third-party notices.
 - **Favorites saved with your data:** Toolbox favorites move from webview storage into the app's data folder on first launch and are included transactionally in setup imports.
 
 ### Behavior to know
