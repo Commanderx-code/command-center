@@ -2,6 +2,11 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.7.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.7.0) — 2026-09-24
+
+- Added **Backup file history**: search every Restic snapshot for a file name, path or pattern, see each saved copy with its snapshot time, size and modification time, spot the versions that changed or a file that was deleted, and restore a chosen version into a new folder.
+- Added a [Wiki user guide](https://github.com/Commanderx-code/command-center/wiki) covering every page and feature, linked from the README.
+
 ## [0.6.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.6.0) — 2026-09-24
 
 - Command Center is now licensed under the MIT License. Packages include the license and third-party notices.

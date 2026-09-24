@@ -1,6 +1,6 @@
 pkgbase = command-center
 	pkgdesc = Local Linux workstation dashboard for repositories, backups, configuration and Toolbox
-	pkgver = 0.6.0
+	pkgver = 0.7.0
 	pkgrel = 1
 	url = https://github.com/Commanderx-code/command-center
 	arch = x86_64
@@ -25,7 +25,7 @@ pkgbase = command-center
 	optdepends = restic: backup recovery
 	optdepends = fish: Fish custom actions
 	options = !lto
-	source = git+https://github.com/Commanderx-code/command-center.git#tag=v0.6.0
+	source = git+https://github.com/Commanderx-code/command-center.git#tag=v0.7.0
 	sha256sums = SKIP
 
 pkgname = command-center

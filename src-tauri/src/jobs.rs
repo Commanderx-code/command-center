@@ -316,7 +316,7 @@ fn reader<T: Read + Send + 'static>(
                 if stdout {
                     if let Ok(mut state) = jobs.0.lock() {
                         if let Some(job) = state.jobs.iter_mut().find(|j| j.id == id) {
-                            if ["snapshots", "snapshot-files"].contains(&job.action.as_str())
+                            if ["snapshots", "snapshot-files", "snapshot-find"].contains(&job.action.as_str())
                                 && job.result.len() + text.len() <= OUTPUT_LIMIT
                             {
                                 job.result.push_str(&text);

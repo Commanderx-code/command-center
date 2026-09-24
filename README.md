@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="https://github.com/Commanderx-code/command-center/releases/latest">Download</a> ·
+  <a href="https://github.com/Commanderx-code/command-center/wiki">Wiki guide</a> ·
   <a href="docs/installation.md">Installation</a> ·
   <a href="docs/user-guide.md">User guide</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
@@ -45,6 +46,12 @@ Command Center brings [Commander Toolbox](https://github.com/Commanderx-code/com
 | **Health & Activity**    | Check disk space, services, backup freshness, and repository attention items. Review commands and recorded job results.                                                     |
 
 The app runs as your normal user. Commands are reviewed before execution; Toolbox scripts retain their own privilege checks and confirmations. Integration paths are editable in **Settings**. See the [user guide](docs/user-guide.md) for exact behavior and limitations.
+
+## New in 0.7.0
+
+- **Backup file history:** search every backup snapshot for a file, see each saved version with its date, size and whether it changed, spot files that were deleted, and restore the version you want into a new folder.
+
+Read [Backup file history](docs/user-guide.md#backup-file-history) in the user guide.
 
 ## New in 0.6.0
 
@@ -79,13 +86,13 @@ Read [Workflows, profiles, and recovery verification](docs/operations.md) for se
 
 **[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-| Package         | Download v0.6.0                                                                                                                 | Install the downloaded file                            |
+| Package         | Download v0.7.0                                                                                                                 | Install the downloaded file                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center_0.6.0_amd64.deb)     | `sudo apt install ./command-center_0.6.0_amd64.deb`    |
-| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center-0.6.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.6.0-1.x86_64.rpm` |
-| Arch / Garuda   | [`.pkg.tar.zst` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center-0.6.0-1-x86_64.pkg.tar.zst) | `sudo pacman -U ./command-center-0.6.0-1-x86_64.pkg.tar.zst` |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.7.0/command-center_0.7.0_amd64.deb)     | `sudo apt install ./command-center_0.7.0_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.7.0/command-center-0.7.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.7.0-1.x86_64.rpm` |
+| Arch / Garuda   | [`.pkg.tar.zst` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.7.0/command-center-0.7.0-1-x86_64.pkg.tar.zst) | `sudo pacman -U ./command-center-0.7.0-1-x86_64.pkg.tar.zst` |
 
-Version 0.6.0 packages require **Linux x86_64, glibc 2.35+, GTK 3, and WebKitGTK 4.1**. They are install-tested on Ubuntu 22.04 and 24.04, Debian 12, and Fedora 43, and the Arch package on current Arch; the release notes link the workflow run. Release assets include `SHA256SUMS` for verification.
+Version 0.7.0 packages require **Linux x86_64, glibc 2.35+, GTK 3, and WebKitGTK 4.1**. They are install-tested on Ubuntu 22.04 and 24.04, Debian 12, and Fedora 43, and the Arch package on current Arch; the release notes link the workflow run. Release assets include `SHA256SUMS` for verification.
 
 Arch/Garuda users can also build the same package with `makepkg -si` from `packaging/aur/`, or develop from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 
@@ -113,6 +120,7 @@ Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop ope
 
 ## Documentation
 
+- **[Wiki: how to use Command Center](https://github.com/Commanderx-code/command-center/wiki)**: a step-by-step guide to every page and feature, plus troubleshooting.
 - [Installation](docs/installation.md) — packages, requirements, checksums, and source builds.
 - [User guide](docs/user-guide.md) — features, integrations, command behavior, and local data.
 - [Development](docs/development.md) — repository layout, checks, and Toolbox updates.
