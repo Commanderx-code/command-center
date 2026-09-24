@@ -83,10 +83,11 @@ Read [Workflows, profiles, and recovery verification](docs/operations.md) for se
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center_0.6.0_amd64.deb)     | `sudo apt install ./command-center_0.6.0_amd64.deb`    |
 | Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center-0.6.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.6.0-1.x86_64.rpm` |
+| Arch / Garuda   | [`.pkg.tar.zst` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center-0.6.0-1-x86_64.pkg.tar.zst) | `sudo pacman -U ./command-center-0.6.0-1-x86_64.pkg.tar.zst` |
 
-Version 0.6.0 packages require **Linux x86_64, glibc 2.35+, GTK 3, and WebKitGTK 4.1**. They are install-tested on Ubuntu 22.04 and 24.04, Debian 12, and Fedora 43; the release notes link the workflow run. Release assets include `SHA256SUMS` for verification.
+Version 0.6.0 packages require **Linux x86_64, glibc 2.35+, GTK 3, and WebKitGTK 4.1**. They are install-tested on Ubuntu 22.04 and 24.04, Debian 12, and Fedora 43, and the Arch package on current Arch; the release notes link the workflow run. Release assets include `SHA256SUMS` for verification.
 
-For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
+Arch/Garuda users can also build the same package with `makepkg -si` from `packaging/aur/`, or develop from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 
 ## Get started
 

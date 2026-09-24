@@ -28,6 +28,14 @@ On a compatible Fedora/RPM system:
 sudo dnf install ./command-center-0.6.0-1.x86_64.rpm
 ```
 
+On Arch or an Arch-based system such as Garuda (0.6.0 and later):
+
+```bash
+sudo pacman -U ./command-center-0.6.0-1-x86_64.pkg.tar.zst
+```
+
+The Arch package is built from the release tag with `packaging/aur/PKGBUILD` in a clean Arch container and tracks current Arch libraries; update your system before installing it. To build it yourself instead, run `makepkg -si` from a copy of `packaging/aur/`.
+
 Launch **Command Center** from your application menu. Run the app as your normal user, without `sudo`.
 
 ## From source on Arch/Garuda

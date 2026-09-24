@@ -30,7 +30,7 @@ git push origin v0.6.0
 npm run release:draft -- v0.6.0
 ```
 
-The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag and runs the checks and tests. It then finds the successful **Linux packages** run for the tagged commit, downloads that run's `packages` artifact, verifies its `SHA256SUMS`, and creates an **unpublished** GitHub release. The release notes are docs/release-notes.md plus a build-and-validation section linking the workflow run. If CI has not passed for the tag, no draft is created. The command never builds release packages locally: a build on a newer distribution such as Garuda would require a newer glibc than the packages declare. It does not push tags or publish the draft. Download and verify the hosted assets and test the app on your machine before publishing.
+The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag and runs the checks and tests. It then finds the successful **Linux packages** run for the tagged commit, downloads that run's `packages` and `arch-package` artifacts, verifies their checksums, writes one `SHA256SUMS` covering the `.deb`, `.rpm`, and Arch package, and creates an **unpublished** GitHub release. The release notes are docs/release-notes.md plus a build-and-validation section linking the workflow run. If CI has not passed for the tag, no draft is created. The command never builds release packages locally: a build on a newer distribution such as Garuda would require a newer glibc than the packages declare. It does not push tags or publish the draft. Download and verify the hosted assets and test the app on your machine before publishing.
 
 The app discovers only published releases. Building a package, creating a tag, or preparing a draft does not publish a release.
 
@@ -44,7 +44,7 @@ The **Linux packages** workflow runs these jobs:
 | `build`       | Builds the `.deb` and `.rpm` once in an `ubuntu:22.04` container (glibc 2.35), validates them, and uploads the `packages` artifact with `SHA256SUMS`. |
 | `install-deb` | Installs that `.deb` on Ubuntu 22.04, Debian 12, and Ubuntu 24.04 and runs a 20-second launch check under a virtual display as an ordinary user.      |
 | `install-rpm` | Installs that `.rpm` on Fedora 43 and runs the same launch check.                                                                                    |
-| `arch`        | Builds `packaging/aur/PKGBUILD` from the pushed commit in a clean `archlinux` container, lints the recipe and package with namcap, installs, and launches it. |
+| `arch`        | Builds `packaging/aur/PKGBUILD` in a clean `archlinux` container, lints the recipe and package with namcap, installs, and launches it. Tag pushes build the recipe unmodified from its release tag (the pkgver must match the tag) and upload the `arch-package` artifact; other pushes build the pushed commit. |
 
 These are installation and launch checks, not end-to-end validation of system-changing workflows.
 

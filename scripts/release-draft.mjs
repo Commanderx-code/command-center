@@ -1,4 +1,4 @@
-import {readFileSync,writeFileSync,rmSync,mkdtempSync} from 'node:fs';
+import {readFileSync,writeFileSync,rmSync,mkdtempSync,copyFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -25,11 +25,21 @@ if(!passed)throw new Error(`No successful Linux packages run for ${head.slice(0,
 const out=new URL('artifacts/release/',root).pathname;
 rmSync(out,{recursive:true,force:true});
 run('gh',['run','download',String(passed.databaseId),'--repo',repo,'--name','packages','--dir',out]);
-const assets=[`command-center_${version}_amd64.deb`,`command-center-${version}-1.x86_64.rpm`];
+const packages=[`command-center_${version}_amd64.deb`,`command-center-${version}-1.x86_64.rpm`];
 const sums=readFileSync(join(out,'SHA256SUMS'),'utf8');
-for(const asset of assets)if(!sums.includes(`  ${asset}\n`))throw new Error(`${asset} is missing from the CI artifact`);
+for(const asset of packages)if(!sums.includes(`  ${asset}\n`))throw new Error(`${asset} is missing from the CI artifact`);
 run('sha256sum',['--check','--strict','SHA256SUMS'],out);
+// The Arch package is built from the release tag by the same run's arch job.
+const pkgrel=readFileSync(new URL('packaging/aur/PKGBUILD',root),'utf8').match(/^pkgrel=(\d+)$/m)?.[1];
+const arch=`command-center-${version}-${pkgrel}-x86_64.pkg.tar.zst`;
+const archDir=mkdtempSync(join(tmpdir(),'command-center-arch-'));
+run('gh',['run','download',String(passed.databaseId),'--repo',repo,'--name','arch-package','--dir',archDir]);
+if(!readFileSync(join(archDir,'SHA256SUMS'),'utf8').includes(`  ${arch}\n`))throw new Error(`${arch} is missing from the CI artifact`);
+run('sha256sum',['--check','--strict','SHA256SUMS'],archDir);
+copyFileSync(join(archDir,arch),join(out,arch));
+const assets=[...packages,arch];
+writeFileSync(join(out,'SHA256SUMS'),run('sha256sum',assets,out)+'\n');
 const notes=join(mkdtempSync(join(tmpdir(),'command-center-release-')),'notes.md');
-writeFileSync(notes,`${readFileSync(new URL('docs/release-notes.md',root),'utf8').trimEnd()}\n\n### Build and validation\n\nBoth packages were built once on Ubuntu 22.04 (glibc 2.35), then installed and launched as a normal user on Ubuntu 22.04, Debian 12, Ubuntu 24.04 and Fedora 43. The Arch recipe was built from the same commit in a clean container, linted with namcap, installed and launched. Workflow run: ${passed.url}\n`);
+writeFileSync(notes,`${readFileSync(new URL('docs/release-notes.md',root),'utf8').trimEnd()}\n\n### Build and validation\n\nBoth packages were built once on Ubuntu 22.04 (glibc 2.35), then installed and launched as a normal user on Ubuntu 22.04, Debian 12, Ubuntu 24.04 and Fedora 43. The Arch package was built from the release tag with packaging/aur/PKGBUILD in a clean container, linted with namcap, installed and launched. Workflow run: ${passed.url}\n`);
 console.log(run('gh',['release','create',tag,...assets.map(a=>join(out,a)),join(out,'SHA256SUMS'),'--repo',repo,'--verify-tag','--draft','--title',`Command Center ${tag}`,'--notes-file',notes]));
 console.log(`Draft created from ${passed.url}. Download and verify the hosted assets, test the app on your machine, then publish on GitHub.`);

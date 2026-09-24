@@ -26,6 +26,9 @@ sudo apt install ./command-center_0.6.0_amd64.deb
 
 # Fedora / RPM
 sudo dnf install ./command-center-0.6.0-1.x86_64.rpm
+
+# Arch / Garuda (built against current Arch libraries)
+sudo pacman -U ./command-center-0.6.0-1-x86_64.pkg.tar.zst
 ```
 
 Download `SHA256SUMS` beside the package and run:
@@ -33,5 +36,3 @@ Download `SHA256SUMS` beside the package and run:
 ```sh
 sha256sum --check --ignore-missing SHA256SUMS
 ```
-
-Arch users can build `packaging/aur/PKGBUILD` with `makepkg -si`.
