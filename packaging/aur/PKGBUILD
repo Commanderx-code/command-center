@@ -1,12 +1,13 @@
 # Arch build recipe. CI builds it in a clean archlinux container, lints it with
 # namcap, installs it, and launches it. Not yet submitted to AUR.
+# libappindicator-gtk3 is loaded at runtime for the tray, so namcap cannot see it.
 pkgname=command-center
 pkgver=0.6.0
 pkgrel=1
 pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
 arch=('x86_64')
 url='https://github.com/Commanderx-code/command-center'
-depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'hicolor-icon-theme')
+depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'libsoup3' 'glib2' 'cairo' 'gdk-pixbuf2' 'dbus' 'glibc' 'libgcc' 'hicolor-icon-theme')
 makedepends=('git' 'nodejs' 'npm' 'rust' 'pkgconf')
 optdepends=('libnotify: desktop notifications' 'restic: backup recovery' 'fish: Fish custom actions')
 # Rust links C objects; makepkg's LTO flags break that link.
