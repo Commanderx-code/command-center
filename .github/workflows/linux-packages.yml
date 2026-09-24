@@ -5,6 +5,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      arch_release:
+        description: Build the Arch package from the release tag named in PKGBUILD, for attaching to that release
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -105,7 +110,9 @@ jobs:
       - name: Launch installed application as a normal user
         run: useradd -m smoke && runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
 
-  # Build the Arch recipe from this commit in a clean container, lint it, install it and launch it.
+  # Build the Arch recipe in a clean container, lint it, install it and launch it. Tag pushes
+  # (and arch_release dispatches) build the recipe unmodified from its release tag, exactly as
+  # AUR users will; other pushes build this commit.
   arch:
     runs-on: ubuntu-24.04
     container: archlinux:base-devel
@@ -114,16 +121,34 @@ jobs:
       - name: Install build, lint and launch-test tools
         run: pacman -Syu --noconfirm --needed git nodejs npm rust webkit2gtk-4.1 gtk3 libappindicator-gtk3 namcap xorg-server-xvfb xorg-xauth dbus
       - uses: actions/checkout@v4
-      - name: Build package from the checked-out commit
+      - name: Build package
+        env:
+          RELEASE_BUILD: ${{ github.ref_type == 'tag' || inputs.arch_release }}
         run: |
           useradd -m builder
           git config --system --add safe.directory '*'
           mkdir /build && cp packaging/aur/PKGBUILD /build/
-          # The published recipe builds a release tag; CI builds this commit instead.
-          sed -i "s|^source=.*|source=(\"command-center::git+file://$GITHUB_WORKSPACE#commit=$GITHUB_SHA\")|" /build/PKGBUILD
+          if [ "$RELEASE_BUILD" = true ]; then
+            . /build/PKGBUILD
+            if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$pkgver" != "$GITHUB_REF_NAME" ]; then
+              echo "PKGBUILD pkgver $pkgver does not match tag $GITHUB_REF_NAME" >&2; exit 1
+            fi
+          else
+            sed -i "s|^source=.*|source=(\"command-center::git+file://$GITHUB_WORKSPACE#commit=$GITHUB_SHA\")|" /build/PKGBUILD
+          fi
           chown -R builder /build
           cd /build && runuser -u builder -- makepkg --noconfirm
       - name: Lint recipe and package
         run: cd /build && namcap PKGBUILD && namcap ./*.pkg.tar.zst
       - name: Install package and launch as a normal user
         run: pacman -U --noconfirm /build/*.pkg.tar.zst && runuser -u builder -- bash scripts/smoke-desktop.sh /usr/bin/command-center
+      - name: Prepare release asset
+        run: |
+          mkdir /arch-release
+          cp /build/command-center-[0-9]*-x86_64.pkg.tar.zst /arch-release/
+          cd /arch-release && test "$(ls | wc -l)" -eq 1 && sha256sum -- *.pkg.tar.zst > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: /arch-release/*
+          if-no-files-found: error

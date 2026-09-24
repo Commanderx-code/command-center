@@ -28,6 +28,9 @@ const toolbox = await readFile(
   new URL("src-tauri/src/toolbox.rs", root),
   "utf8",
 );
+const pkgbuild = await readFile(new URL("packaging/aur/PKGBUILD", root), "utf8");
+if (pkgbuild.match(/^pkgver=(.+)$/m)?.[1] !== pkg.version)
+  throw new Error("packaging/aur/PKGBUILD pkgver must match package.json");
 const pinned = cargo.match(/linutil_core[^\n]+rev = "([a-f0-9]+)"/)?.[1];
 const reported = toolbox.match(/REVISION: &str = "([a-f0-9]+)"/)?.[1];
 if (!pinned || pinned !== reported)
