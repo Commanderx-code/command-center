@@ -41,6 +41,13 @@ values, _ = header((end+7)//8*8)
 assert values[1001] == [version] and values[1022] == ['x86_64']
 for dependency in [f'libc.so.6(GLIBC_{floor})(64bit)', 'libwebkit2gtk-4.1.so.0()(64bit)', 'libgtk-3.so.0()(64bit)', 'libappindicator3.so.1()(64bit)']:
     assert dependency in values[1049], dependency
+# The MIT notice and third-party notices must ship with every binary package.
+license = (root / 'LICENSE').read_bytes()
+assert member('data.tar.gz', 'usr/share/doc/command-center/copyright') == license
+assert member('data.tar.gz', 'usr/share/doc/command-center/THIRD_PARTY.md') == (root / 'THIRD_PARTY.md').read_bytes()
+assert subprocess.check_output(['bsdtar', '-xOf', str(rpm), './usr/share/licenses/command-center/LICENSE']) == license
+assert subprocess.check_output(['bsdtar', '-xOf', str(rpm), './usr/share/doc/command-center/THIRD_PARTY.md']) == (root / 'THIRD_PARTY.md').read_bytes()
+assert values[1014] == ['MIT'], values.get(1014)
 pin = re.search(r'REVISION: &str = "([a-f0-9]+)"', (root/'src-tauri/src/toolbox.rs').read_text())[1]
 for binary in [member('data.tar.gz', 'usr/bin/command-center'), subprocess.check_output(['bsdtar', '-xOf', str(rpm), './usr/bin/command-center'])]:
     assert binary[:4] == b'\x7fELF' and struct.unpack_from('<H', binary, 18)[0] == 62

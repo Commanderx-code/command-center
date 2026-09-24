@@ -42,12 +42,20 @@
     "longDescription": "Manage repositories, Home Manager, backups, configuration and workstation health.",
     "linux": {
       "deb": {
+        "files": {
+          "/usr/share/doc/command-center/copyright": "../LICENSE",
+          "/usr/share/doc/command-center/THIRD_PARTY.md": "../THIRD_PARTY.md"
+        },
         "depends": [
           "libc6 (>= 2.35)",
           "libayatana-appindicator3-1"
         ]
       },
       "rpm": {
+        "files": {
+          "/usr/share/licenses/command-center/LICENSE": "../LICENSE",
+          "/usr/share/doc/command-center/THIRD_PARTY.md": "../THIRD_PARTY.md"
+        },
         "depends": [
           "libc.so.6(GLIBC_2.35)(64bit)",
           "libappindicator3.so.1()(64bit)"
