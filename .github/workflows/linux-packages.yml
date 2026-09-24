@@ -12,9 +12,11 @@ on:
         default: false
 permissions:
   contents: read
+# Manual runs never share a group with pushes, and only superseded pull request runs are
+# cancelled, so every commit on main and every tag keeps a complete result.
 concurrency:
-  group: linux-packages-${{ github.ref }}
-  cancel-in-progress: true
+  group: linux-packages-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   # Rust tests run as a normal user; containers run as root, which masks permission checks.
   tests:
