@@ -1,8 +1,9 @@
 [package]
 name = "command-center"
-version = "0.5.1"
+version = "0.6.0"
 description = "A Linux control deck for repositories, configuration, backup, and recovery"
 authors = ["Commander"]
+license = "MIT"
 edition = "2021"
 
 [lib]

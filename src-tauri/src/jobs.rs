@@ -40,12 +40,17 @@ pub struct Job {
     pub interactive: bool,
     pub acknowledged: bool,
 }
+/// A started job and the resources it holds until it finishes.
+struct Running {
+    title: String,
+    locks: Vec<String>,
+    cancel: bool,
+}
 #[derive(Default)]
 pub struct Inner {
     jobs: Vec<Job>,
     plans: BTreeMap<String, (Plan, Request, Instant)>,
-    pid: Option<u32>,
-    cancel: bool,
+    running: BTreeMap<String, Running>,
     initialized: bool,
     persistence_error: Option<String>,
     close_requested: bool,
@@ -81,6 +86,35 @@ fn initialize(app: &tauri::AppHandle, state: &mut Inner) -> Result<(), String> {
 fn active(state: &Inner) -> bool {
     state.jobs.iter().any(|j| j.status == "running")
 }
+const REPOSITORY_ACTIONS: [&str; 13] = [
+    "stage", "stage-all", "unstage", "commit", "branch-create", "branch-switch",
+    "stash-create", "stash-apply", "branch-publish", "fetch", "pull", "push", "project-task",
+];
+/// Jobs run concurrently unless they share a resource: the same working directory,
+/// the workstation (every non-repository action), or the embedded terminal.
+fn locks(request: &Request, plan: &Plan) -> Vec<String> {
+    let mut locks = vec![format!("directory:{}", plan.cwd)];
+    if !REPOSITORY_ACTIONS.contains(&request.action.as_str()) {
+        locks.push("system".into());
+    }
+    if plan.interactive && !plan.external_terminal {
+        locks.push("terminal".into());
+    }
+    locks
+}
+fn conflict(state: &Inner, locks: &[String]) -> Result<(), String> {
+    for job in state.running.values() {
+        if let Some(lock) = job.locks.iter().find(|l| locks.contains(l)) {
+            let reason = match lock.as_str() {
+                "system" => "Workstation tasks run one at a time".to_string(),
+                "terminal" => "The embedded terminal is in use".to_string(),
+                _ => format!("It uses the same folder ({})", &lock["directory:".len()..]),
+            };
+            return Err(format!("Wait for “{}” to finish. {reason}.", job.title));
+        }
+    }
+    Ok(())
+}
 #[tauri::command]
 pub fn job_history(
     app: tauri::AppHandle,
@@ -112,9 +146,7 @@ pub async fn prepare_job(app: tauri::AppHandle, request: Request) -> Result<Plan
         let jobs = app.state::<Jobs>();
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
         initialize(&app, &mut state)?;
-        if active(&state) {
-            return Err("Wait for the current job to finish".into());
-        }
+        conflict(&state, &locks(&request, &plan))?;
         state
             .plans
             .retain(|_, (_, _, created)| created.elapsed() < Duration::from_secs(300));
@@ -136,9 +168,6 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
         let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
         let jobs = app.state::<Jobs>().inner().clone();
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
-        if active(&state) {
-            return Err("Another job is running".into());
-        }
         let (plan, request, created) = state
             .plans
             .remove(&id)
@@ -154,15 +183,17 @@ pub async fn start_job(app: tauri::AppHandle, id: String) -> Result<String, Stri
             return Err("Settings changed; review the action again".into());
         }
         let mut state = jobs.0.lock().map_err(|e| e.to_string())?;
-        if active(&state) {
-            return Err("Another job started while preparing this action".into());
-        }
+        let held = locks(&request, &plan);
+        conflict(&state, &held)?;
         if let Some(target) = &plan.create_target {
             integrations::validate_restore_target(std::path::Path::new(target))?;
             fs::create_dir(target).map_err(|e| e.to_string())?;
         }
-        crate::desktop_status::status(&app,"Command Center · Task running");
-        state.cancel = false;
+        state.running.insert(
+            id.clone(),
+            Running { title: plan.title.clone(), locks: held, cancel: false },
+        );
+        crate::desktop_status::status(&app, &running_status(state.running.len()));
         let command = shell_words::join(
             std::iter::once(plan.program.as_str()).chain(plan.args.iter().map(String::as_str)),
         );
@@ -227,8 +258,17 @@ pub(crate) fn build_plan(
         integrations::build_plan(request, settings)
     }
 }
-pub(crate) fn cancelled(jobs: &Jobs) -> bool {
-    jobs.0.lock().map(|s| s.cancel).unwrap_or(true)
+fn running_status(count: usize) -> String {
+    match count {
+        1 => "Command Center · Task running".into(),
+        n => format!("Command Center · {n} tasks running"),
+    }
+}
+pub(crate) fn cancelled(jobs: &Jobs, id: &str) -> bool {
+    jobs.0
+        .lock()
+        .map(|s| s.running.get(id).is_none_or(|r| r.cancel))
+        .unwrap_or(true)
 }
 fn append(jobs: &Jobs, id: &str, text: &str) {
     if let Ok(mut state) = jobs.0.lock() {
@@ -305,7 +345,10 @@ fn finish(
     append(jobs, id, message);
     crate::desktop_status::job_finished(app,status);
     if let Ok(mut state) = jobs.0.lock() {
-        state.pid = None;
+        state.running.remove(id);
+        if !state.running.is_empty() {
+            crate::desktop_status::status(app, &running_status(state.running.len()));
+        }
         if let Some(job) = state.jobs.iter_mut().find(|j| j.id == id) {
             job.status = status.into();
             job.exit_code = code;
@@ -408,9 +451,6 @@ fn run_process(jobs: Jobs, plan: Plan, id: String) -> (String, Option<i32>, Stri
             return ("failed".into(), None, format!("Could not start: {e}"));
         }
     };
-    if let Ok(mut state) = jobs.0.lock() {
-        state.pid = Some(child.id());
-    }
     let stdout = reader(child.stdout.take().unwrap(), jobs.clone(), id.clone(), true);
     let stderr = reader(
         child.stderr.take().unwrap(),
@@ -421,7 +461,7 @@ fn run_process(jobs: Jobs, plan: Plan, id: String) -> (String, Option<i32>, Stri
     let start = Instant::now();
     let mut stopped = None;
     let status = loop {
-        let cancel = jobs.0.lock().map(|s| s.cancel).unwrap_or(true);
+        let cancel = cancelled(&jobs, &id);
         if cancel || start.elapsed() > Duration::from_secs(plan.timeout_seconds) {
             stopped = Some(if cancel { "cancelled" } else { "timed-out" });
             unsafe {
@@ -484,7 +524,11 @@ pub fn cancel_job(id: String, jobs: State<Jobs>) -> Result<(), String> {
     if job.external_terminal {
         return Err("Stop this workflow in its terminal".into());
     }
-    state.cancel = true;
+    state
+        .running
+        .get_mut(&id)
+        .ok_or("Job has already finished")?
+        .cancel = true;
     Ok(())
 }
 #[tauri::command]
@@ -574,6 +618,10 @@ mod tests {
             interactive: false,
             acknowledged: false,
         });
+        jobs.0.lock().unwrap().running.insert(
+            "fixture".into(),
+            Running { title: "Fixture".into(), locks: vec![], cancel: false },
+        );
         jobs
     }
     fn plan(script: &str) -> Plan {
@@ -623,7 +671,7 @@ mod tests {
             assert!(start.elapsed() < Duration::from_secs(3));
             thread::sleep(Duration::from_millis(20));
         }
-        jobs.0.lock().unwrap().cancel = true;
+        jobs.0.lock().unwrap().running.get_mut("fixture").unwrap().cancel = true;
         let (status, _, _) = handle.join().unwrap();
         assert_eq!(status, "cancelled");
         assert!(start.elapsed() < Duration::from_secs(3));
@@ -654,5 +702,43 @@ mod tests {
         let state = jobs.0.lock().unwrap();
         assert_eq!(state.jobs[0].output.len(), OUTPUT_LIMIT);
         assert!(state.jobs[0].truncated);
+    }
+
+    #[test]
+    fn jobs_run_concurrently_unless_they_share_a_folder_the_workstation_or_terminal() {
+        let request = |action: &str| Request { action: action.into(), ..Default::default() };
+        let at = |cwd: &str, interactive: bool| Plan { cwd: cwd.into(), interactive, ..plan("true") };
+        let mut state = Inner::default();
+        let task = locks(&request("project-task"), &at("/repo/a", false));
+        state.running.insert("task".into(), Running { title: "npm · build".into(), locks: task, cancel: false });
+        // Another repository, and a workstation task, may run alongside it.
+        assert!(conflict(&state, &locks(&request("fetch"), &at("/repo/b", false))).is_ok());
+        let backup = locks(&request("backup"), &at("/home", false));
+        assert!(conflict(&state, &backup).is_ok());
+        // The same repository waits.
+        let error = conflict(&state, &locks(&request("commit"), &at("/repo/a", false))).unwrap_err();
+        assert!(error.contains("npm · build") && error.contains("/repo/a"));
+        state.running.insert("backup".into(), Running { title: "Backup".into(), locks: backup, cancel: false });
+        let error = conflict(&state, &locks(&request("hm-switch"), &at("/dotfiles", false))).unwrap_err();
+        assert!(error.contains("one at a time"));
+        state.running.remove("backup");
+        let toolbox = locks(&request("toolbox"), &at("/scripts", true));
+        state.running.insert("toolbox".into(), Running { title: "Installer".into(), locks: toolbox, cancel: false });
+        let error = conflict(&state, &locks(&request("project-task"), &at("/repo/c", true))).unwrap_err();
+        assert!(error.contains("terminal is in use"));
+        let external = Plan { external_terminal: true, ..at("/repo/c", true) };
+        assert!(conflict(&state, &locks(&request("project-task"), &external)).is_ok());
+    }
+    #[test]
+    fn cancelling_one_job_leaves_others_running() {
+        let jobs = fixture();
+        jobs.0.lock().unwrap().running.insert(
+            "other".into(),
+            Running { title: "Other".into(), locks: vec![], cancel: false },
+        );
+        jobs.0.lock().unwrap().running.get_mut("other").unwrap().cancel = true;
+        assert!(cancelled(&jobs, "other"));
+        assert!(!cancelled(&jobs, "fixture"));
+        assert!(cancelled(&jobs, "finished"), "unknown jobs are never resumed");
     }
 }

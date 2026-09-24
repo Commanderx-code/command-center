@@ -28,7 +28,11 @@ pub fn run() {
     tauri::Builder::default()
         .manage(jobs::Jobs::default())
         .manage(desktop_status::HealthNotice::default())
-        .setup(|app| { if let Err(error)=desktop_status::setup(app.handle()) { eprintln!("Tray unavailable: {error}"); } Ok(()) })
+        .setup(|app| {
+            setup::recover_interrupted_import(app.handle());
+            if let Err(error)=desktop_status::setup(app.handle()) { eprintln!("Tray unavailable: {error}"); }
+            Ok(())
+        })
         .manage(toolbox::Toolbox::default())
         .manage(terminal::Terminals::default())
         .on_window_event(|window, event| {
@@ -69,6 +73,8 @@ pub fn run() {
             diagnostics::check_integrations,
             integrations::sync_status,
             toolbox::toolbox_catalog,
+            toolbox::load_toolbox_favorites,
+            toolbox::save_toolbox_favorites,
             toolbox_updates::toolbox_update_checks,
             toolbox_updates::toolbox_catalog_update,
             toolbox_updates::toolbox_compare,

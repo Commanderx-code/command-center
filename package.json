@@ -1,9 +1,10 @@
 {
   "name": "command-center",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "A Linux control deck for repositories, configuration, backup, and recovery.",
+  "license": "MIT",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",

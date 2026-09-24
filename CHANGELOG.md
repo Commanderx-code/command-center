@@ -2,6 +2,17 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.6.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.6.0) — Unreleased
+
+- Added **Merge** setup imports: keep this machine's preferences and definitions, add new ones, fill empty integration paths, and list differing items that were kept. **Replace** remains available.
+- Setup imports keep a journal; an import interrupted by a crash or power loss is rolled back from its backup at the next launch and reported on the dashboard.
+- Jobs now run concurrently when they use different resources: repository jobs and project tasks in different repositories, plus one workstation task. Each job is stopped individually, waiting jobs name what they wait for, and the tray shows the running count.
+- Packages are built on Ubuntu 22.04 and require glibc 2.35+ (was 2.39). CI install-tests them on Ubuntu 22.04/24.04, Debian 12, and Fedora 43, and builds, lints, installs, and launches the Arch recipe in a clean container. Package validation now checks the binary's real glibc needs.
+- `release:draft` publishes the CI-built, install-tested packages and links the workflow run in the notes.
+- Toolbox favorites moved from webview storage to app data (migrated on first launch) and are part of the import transaction.
+- File replacements now sync their directory for durability. Repository Details disables actions only while that repository has a running job.
+- Internal: configuration editor split out of `features.js`; removed a stale v0.1.0 archive from the repository.
+
 ## [0.5.1](https://github.com/Commanderx-code/command-center/releases/tag/v0.5.1) — 2026-09-24
 
 Security release. All 0.5.0 users should upgrade.

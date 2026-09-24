@@ -1,0 +1,31 @@
+pkgbase = command-center
+	pkgdesc = Local Linux workstation dashboard for repositories, backups, configuration and Toolbox
+	pkgver = 0.6.0
+	pkgrel = 1
+	url = https://github.com/Commanderx-code/command-center
+	arch = x86_64
+	license = MIT
+	makedepends = git
+	makedepends = nodejs
+	makedepends = npm
+	makedepends = rust
+	makedepends = pkgconf
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libappindicator-gtk3
+	depends = libsoup3
+	depends = glib2
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = dbus
+	depends = glibc
+	depends = libgcc
+	depends = hicolor-icon-theme
+	optdepends = libnotify: desktop notifications
+	optdepends = restic: backup recovery
+	optdepends = fish: Fish custom actions
+	options = !lto
+	source = git+https://github.com/Commanderx-code/command-center.git#tag=v0.6.0
+	sha256sums = SKIP
+
+pkgname = command-center

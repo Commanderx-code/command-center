@@ -15,6 +15,7 @@
   <a href="https://github.com/Commanderx-code/command-center/releases/latest"><img src="https://img.shields.io/github/v/release/Commanderx-code/command-center?style=flat-square&amp;color=27b7cd" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/platform-Linux-27b7cd?style=flat-square" alt="Platform: Linux" />
   <img src="https://img.shields.io/badge/desktop-Tauri_2-7371fc?style=flat-square" alt="Desktop: Tauri 2" />
+  <img src="https://img.shields.io/badge/license-MIT-27b7cd?style=flat-square" alt="License: MIT" />
 </p>
 
 <p align="center">
@@ -45,6 +46,15 @@ Command Center brings [Commander Toolbox](https://github.com/Commanderx-code/com
 
 The app runs as your normal user. Commands are reviewed before execution; Toolbox scripts retain their own privilege checks and confirmations. Integration paths are editable in **Settings**. See the [user guide](docs/user-guide.md) for exact behavior and limitations.
 
+## New in 0.6.0
+
+- Setup imports can merge with this machine's setup, and an import interrupted by a crash or power loss is rolled back automatically on the next launch.
+- Jobs in different repositories run at the same time, alongside one workstation task.
+- Packages now run on glibc 2.35+ and are install-tested on Ubuntu 22.04/24.04, Debian 12, and Fedora 43. The Arch recipe is built and linted in CI.
+- Toolbox favorites are saved with the app's data instead of webview storage.
+
+Read [Setup and project workspaces](docs/setup-and-workspaces.md) and [Running several jobs](docs/user-guide.md#running-several-jobs).
+
 ## New in 0.5.0
 
 - Portable setup bundles with a full import preview, home-path remapping, and backups before replacement.
@@ -69,12 +79,12 @@ Read [Workflows, profiles, and recovery verification](docs/operations.md) for se
 
 **[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-| Package         | Download v0.5.1                                                                                                                 | Install the downloaded file                            |
+| Package         | Download v0.6.0                                                                                                                 | Install the downloaded file                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.1/command-center_0.5.1_amd64.deb)     | `sudo apt install ./command-center_0.5.1_amd64.deb`    |
-| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.1/command-center-0.5.1-1.x86_64.rpm) | `sudo dnf install ./command-center-0.5.1-1.x86_64.rpm` |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center_0.6.0_amd64.deb)     | `sudo apt install ./command-center_0.6.0_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.6.0/command-center-0.6.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.6.0-1.x86_64.rpm` |
 
-Version 0.5.1 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. Release notes identify the build environment and completed distribution checks. Release assets include `SHA256SUMS` for verification.
+Version 0.6.0 packages require **Linux x86_64, glibc 2.35+, GTK 3, and WebKitGTK 4.1**. They are install-tested on Ubuntu 22.04 and 24.04, Debian 12, and Fedora 43; the release notes link the workflow run. Release assets include `SHA256SUMS` for verification.
 
 For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 
@@ -113,3 +123,7 @@ Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop ope
 ## Built with
 
 [Tauri](https://github.com/tauri-apps/tauri) provides the desktop shell, Rust handles local system operations, and JavaScript renders the interface. The Toolbox catalog and scripts come from [Commander Toolbox](https://github.com/Commanderx-code/commander-toolbox), built on Linutil. [xterm.js](https://github.com/xtermjs/xterm.js) and [portable-pty](https://github.com/wezterm/wezterm) power the embedded terminal.
+
+## License
+
+Command Center is released under the [MIT License](LICENSE). Bundled third-party components keep their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).

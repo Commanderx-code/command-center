@@ -11,7 +11,8 @@ concurrency:
   group: linux-packages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  ubuntu:
+  # Rust tests run as a normal user; containers run as root, which masks permission checks.
+  tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -23,8 +24,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Install build and smoke-test dependencies
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf restic rpm libarchive-tools xvfb dbus-x11 libnotify-bin
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - name: Install checksum-pinned Restic for restore integration tests
         run: |
           curl -fsSL https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2 -o /tmp/restic-ci.bz2
@@ -35,23 +36,18 @@ jobs:
       - run: npm ci
       - run: npm run check && npm test && npm run test:rust
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-      - run: npm run desktop:package
-      - run: python3 scripts/verify-packages.py
-      - name: Install Debian package
-        run: sudo apt-get install -y ./artifacts/release/*.deb
-      - name: Launch installed application on a virtual display
-        run: bash scripts/smoke-desktop.sh /usr/bin/command-center
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ubuntu-packages
-          path: artifacts/release/*
-  fedora:
+
+  # Build once on the oldest supported base so one binary serves every distribution.
+  # Ubuntu 22.04 provides glibc 2.35, the floor declared in tauri.conf.json.
+  build:
     runs-on: ubuntu-24.04
-    container: fedora:43
-    timeout-minutes: 35
+    container: ubuntu:22.04
+    timeout-minutes: 40
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
-      - name: Install tools
-        run: dnf install -y git nodejs npm rust cargo gcc gcc-c++ pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel rpm-build python3 binutils bsdtar xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon shadow-utils libnotify restic
+      - name: Install build tools
+        run: apt-get update && apt-get install -y curl ca-certificates git build-essential pkg-config file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf python3 binutils libarchive-tools
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -60,11 +56,74 @@ jobs:
       - run: npm ci && npm run check && npm test
       - run: npm run desktop:package
       - run: python3 scripts/verify-packages.py
-      - name: Install RPM and create smoke-test user
-        run: dnf install -y ./artifacts/release/*.rpm && useradd -m smoke
-      - name: Launch installed application as a normal user
-        run: runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
       - uses: actions/upload-artifact@v4
         with:
-          name: fedora-packages
+          name: packages
           path: artifacts/release/*
+          if-no-files-found: error
+
+  # Install the same packages on each supported family and launch them as a normal user.
+  install-deb:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "debian:12", "ubuntu:24.04"]
+    container: ${{ matrix.image }}
+    timeout-minutes: 20
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: Verify checksums
+        run: cd packages && sha256sum --check SHA256SUMS
+      - name: Install package and launch-test tools
+        run: apt-get update && apt-get install -y ./packages/*.deb xvfb xauth dbus dbus-x11 libnotify-bin
+      - name: Launch installed application as a normal user
+        run: useradd -m smoke && runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
+
+  install-rpm:
+    needs: build
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: Verify checksums
+        run: cd packages && sha256sum --check SHA256SUMS
+      - name: Install package and launch-test tools
+        run: dnf install -y ./packages/*.rpm xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon shadow-utils libnotify
+      - name: Launch installed application as a normal user
+        run: useradd -m smoke && runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
+
+  # Build the Arch recipe from this commit in a clean container, lint it, install it and launch it.
+  arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 45
+    steps:
+      - name: Install build, lint and launch-test tools
+        run: pacman -Syu --noconfirm --needed git nodejs npm rust webkit2gtk-4.1 gtk3 libappindicator-gtk3 namcap xorg-server-xvfb xorg-xauth dbus
+      - uses: actions/checkout@v4
+      - name: Build package from the checked-out commit
+        run: |
+          useradd -m builder
+          git config --system --add safe.directory '*'
+          mkdir /build && cp packaging/aur/PKGBUILD /build/
+          # The published recipe builds a release tag; CI builds this commit instead.
+          sed -i "s|^source=.*|source=(\"command-center::git+file://$GITHUB_WORKSPACE#commit=$GITHUB_SHA\")|" /build/PKGBUILD
+          chown -R builder /build
+          cd /build && runuser -u builder -- makepkg --noconfirm
+      - name: Lint recipe and package
+        run: cd /build && namcap PKGBUILD && namcap ./*.pkg.tar.zst
+      - name: Install package and launch as a normal user
+        run: pacman -U --noconfirm /build/*.pkg.tar.zst && runuser -u builder -- bash scripts/smoke-desktop.sh /usr/bin/command-center

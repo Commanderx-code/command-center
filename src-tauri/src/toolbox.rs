@@ -174,10 +174,54 @@ pub async fn toolbox_catalog(app: tauri::AppHandle) -> Result<Catalog, String> {
         .await
         .map_err(|e| e.to_string())?
 }
+pub(crate) fn validate_favorites(favorites: &[String]) -> Result<(), String> {
+    if favorites.len() > 1000
+        || favorites
+            .iter()
+            .any(|id| id.is_empty() || id.len() > 500 || id.contains(['\0', '\n', '\r']))
+    {
+        return Err("Invalid Toolbox favorite".into());
+    }
+    Ok(())
+}
+pub(crate) fn favorites_file(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    crate::platform::data_file(app, "toolbox-favorites.json")
+}
+/// None until favorites are first saved, so the UI can migrate webview storage.
+pub(crate) fn read_favorites(path: &std::path::Path) -> Result<Option<Vec<String>>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let favorites: Vec<String> = crate::platform::load(path)?;
+    validate_favorites(&favorites)?;
+    Ok(Some(favorites))
+}
+#[tauri::command]
+pub fn load_toolbox_favorites(app: tauri::AppHandle) -> Result<Option<Vec<String>>, String> {
+    read_favorites(&favorites_file(&app)?)
+}
+#[tauri::command]
+pub fn save_toolbox_favorites(app: tauri::AppHandle, favorites: Vec<String>) -> Result<(), String> {
+    let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
+    validate_favorites(&favorites)?;
+    crate::platform::save(&favorites_file(&app)?, &favorites)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn favorites_distinguish_unsaved_from_empty_and_reject_invalid_ids() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("toolbox-favorites.json");
+        assert_eq!(read_favorites(&path).unwrap(), None);
+        crate::platform::save(&path, &Vec::<String>::new()).unwrap();
+        assert_eq!(read_favorites(&path).unwrap(), Some(vec![]));
+        assert!(validate_favorites(&["ok".into()]).is_ok());
+        assert!(validate_favorites(&["bad\nid".into()]).is_err());
+        assert!(validate_favorites(&[String::new()]).is_err());
+        assert!(validate_favorites(&vec!["x".into(); 1001]).is_err());
+    }
     #[test]
     fn shared_catalog_is_complete_unique_and_scripts_survive_requests() {
         let toolbox = Toolbox::default();
