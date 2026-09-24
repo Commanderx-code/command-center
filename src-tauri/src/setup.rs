@@ -182,9 +182,14 @@ pub(crate) struct Current {
     workspace: Workspace,
     favorites: Vec<String>,
 }
-fn current(app: &tauri::AppHandle) -> Result<Current, String> {
+// Replace reads only settings, so it can still overwrite an unreadable collection.
+fn current(app: &tauri::AppHandle, mode: Mode) -> Result<Current, String> {
+    let settings = crate::settings::load_settings(app.clone())?.unwrap_or_default();
+    if mode == Mode::Replace {
+        return Ok(Current { settings, ..Default::default() });
+    }
     Ok(Current {
-        settings: crate::settings::load_settings(app.clone())?.unwrap_or_default(),
+        settings,
         operations: crate::operations::load_operations(app.clone())?,
         workspace: crate::workspace::load_workspace(app.clone())?,
         favorites: crate::toolbox::read_favorites(&crate::toolbox::favorites_file(app)?)?
@@ -370,7 +375,8 @@ pub fn preview_setup_bundle(
     target_home: String,
     mode: Option<Mode>,
 ) -> Result<Preview, String> {
-    let (bundle, kept) = prepare(&text, &target_home, &current(&app)?, mode.unwrap_or_default())?;
+    let mode = mode.unwrap_or_default();
+    let (bundle, kept) = prepare(&text, &target_home, &current(&app, mode)?, mode)?;
     Ok(Preview { bundle, kept })
 }
 #[tauri::command]
@@ -525,7 +531,8 @@ pub fn import_setup_bundle(
 ) -> Result<Value, String> {
     let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     crate::jobs::require_idle(&app)?;
-    let (bundle, _) = prepare(&text, &target_home, &current(&app)?, mode.unwrap_or_default())?;
+    let mode = mode.unwrap_or_default();
+    let (bundle, _) = prepare(&text, &target_home, &current(&app, mode)?, mode)?;
     if serde_json::to_value(&bundle).map_err(|e| e.to_string())?
         != serde_json::to_value(expected).map_err(|e| e.to_string())?
     {
