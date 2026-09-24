@@ -1,22 +1,27 @@
-# Local Arch build recipe. Not submitted to AUR.
+# Arch build recipe. CI builds it in a clean archlinux container, lints it with
+# namcap, installs it, and launches it. Not yet submitted to AUR.
 pkgname=command-center
 pkgver=0.5.1
 pkgrel=1
 pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
 arch=('x86_64')
 url='https://github.com/Commanderx-code/command-center'
-depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3')
+depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'hicolor-icon-theme')
 makedepends=('git' 'nodejs' 'npm' 'rust' 'pkgconf')
 optdepends=('libnotify: desktop notifications' 'restic: backup recovery' 'fish: Fish custom actions')
+# Rust links C objects; makepkg's LTO flags break that link.
+options=('!lto')
 source=("git+https://github.com/Commanderx-code/command-center.git#tag=v${pkgver}")
 sha256sums=('SKIP')
 prepare() {
   cd "$srcdir/command-center"
-  npm ci
-  cargo fetch --manifest-path src-tauri/Cargo.toml --locked
+  npm ci --cache "$srcdir/npm-cache"
+  export RUSTUP_TOOLCHAIN=stable CARGO_HOME="$srcdir/cargo-home"
+  cargo fetch --manifest-path src-tauri/Cargo.toml --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 build() {
   cd "$srcdir/command-center"
+  export RUSTUP_TOOLCHAIN=stable CARGO_HOME="$srcdir/cargo-home"
   npm run desktop:build -- -- --locked
 }
 package() {
