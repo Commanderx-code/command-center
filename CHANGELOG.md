@@ -2,6 +2,14 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.5.1](https://github.com/Commanderx-code/command-center/releases/tag/v0.5.1) — 2026-09-24
+
+Security release. All 0.5.0 users should upgrade.
+
+- Automatic repository inspection no longer runs repository-configured programs: hooks, fsmonitor commands, content filters, external diff/text conversion, signature verifiers, and promisor fetches are disabled for status, diff, and log previews. Reviewed Git actions keep normal hooks, filters, and signing.
+- Changed submodule commits remain visible; nested submodule working files are no longer inspected automatically.
+- Setup bundles and settings imports can no longer replace the automatically run backup health helper. This machine's helper, including an empty value, is always kept.
+
 ## [0.5.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.5.0) — 2026-09-23
 
 - Added portable setup bundles for preferences, repositories, workspace profiles/tasks, workflows, machine profiles, personal tools, and Toolbox favorites.

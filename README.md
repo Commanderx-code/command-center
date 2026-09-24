@@ -69,12 +69,12 @@ Read [Workflows, profiles, and recovery verification](docs/operations.md) for se
 
 **[Get the latest release →](https://github.com/Commanderx-code/command-center/releases/latest)**
 
-| Package         | Download v0.5.0                                                                                                                 | Install the downloaded file                            |
+| Package         | Download v0.5.1                                                                                                                 | Install the downloaded file                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.0/command-center_0.5.0_amd64.deb)     | `sudo apt install ./command-center_0.5.0_amd64.deb`    |
-| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.0/command-center-0.5.0-1.x86_64.rpm) | `sudo dnf install ./command-center-0.5.0-1.x86_64.rpm` |
+| Debian / Ubuntu | [`.deb` · amd64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.1/command-center_0.5.1_amd64.deb)     | `sudo apt install ./command-center_0.5.1_amd64.deb`    |
+| Fedora / RPM    | [`.rpm` · x86_64](https://github.com/Commanderx-code/command-center/releases/download/v0.5.1/command-center-0.5.1-1.x86_64.rpm) | `sudo dnf install ./command-center-0.5.1-1.x86_64.rpm` |
 
-Version 0.5.0 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. Release notes identify the build environment and completed distribution checks. Release assets include `SHA256SUMS` for verification.
+Version 0.5.1 packages require **Linux x86_64, glibc 2.39+, GTK 3, and WebKitGTK 4.1**. Release notes identify the build environment and completed distribution checks. Release assets include `SHA256SUMS` for verification.
 
 For Arch/Garuda, build and install from source using the [installation guide](docs/installation.md#from-source-on-archgaruda).
 
