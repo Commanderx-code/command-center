@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="https://github.com/Commanderx-code/command-center/releases/latest">Download</a> ·
+  <a href="https://github.com/Commanderx-code/command-center/wiki">Wiki guide</a> ·
   <a href="docs/installation.md">Installation</a> ·
   <a href="docs/user-guide.md">User guide</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
@@ -113,6 +114,7 @@ Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop ope
 
 ## Documentation
 
+- **[Wiki: how to use Command Center](https://github.com/Commanderx-code/command-center/wiki)**: a step-by-step guide to every page and feature, plus troubleshooting.
 - [Installation](docs/installation.md) — packages, requirements, checksums, and source builds.
 - [User guide](docs/user-guide.md) — features, integrations, command behavior, and local data.
 - [Development](docs/development.md) — repository layout, checks, and Toolbox updates.
