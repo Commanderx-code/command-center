@@ -105,6 +105,8 @@ pub struct Request {
     pub directory: String,
     pub target: String,
     pub include: String,
+    pub pattern: String,
+    pub ignore_case: bool,
 }
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,6 +152,36 @@ impl Plan {
 fn vecs(values: &[&str]) -> Vec<String> {
     values.iter().map(|v| v.to_string()).collect()
 }
+/// A file name, absolute path, or Restic pattern to search for; `~/` expands to home.
+fn find_pattern(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() || value.len() > 1024 || value.contains(['\0', '\n', '\r']) {
+        return Err("Enter a file name, path or pattern to search for".into());
+    }
+    let pattern = if value == "~" || value.starts_with("~/") {
+        p::expand(value)?.to_string_lossy().into_owned()
+    } else {
+        value.to_string()
+    };
+    if pattern.starts_with('-') {
+        return Err("A search pattern cannot start with a hyphen".into());
+    }
+    Ok(pattern)
+}
+// Snapshot times are not part of `restic find` output, so one job reads both and
+// wraps them in a single JSON document. Values stay positional arguments.
+const FIND_SCRIPT: &str = r#"set -e
+pattern=$1; ignore_case=$2; shift 2
+printf '{"snapshots":'
+restic "$@" snapshots --json
+printf ',"matches":'
+if [ "$ignore_case" = 1 ]; then
+  restic "$@" find --json --ignore-case -- "$pattern"
+else
+  restic "$@" find --json -- "$pattern"
+fi
+printf '}\n'
+"#;
 fn snapshot_id(id: &str) -> Result<(), String> {
     if !(8..=64).contains(&id.len()) || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
         Err("Select a snapshot first".into())
@@ -347,6 +379,16 @@ pub fn build_plan(r: &Request, s: &Settings) -> Result<Plan, String> {
         if health["available"]!=true {plan.explanation.push_str(" Backup health is unavailable; drive readiness could not be verified.");}
         return Ok(plan);
     }
+    if r.action == "snapshot-find" {
+        let pattern = find_pattern(&r.pattern)?;
+        let mut args = vecs(&["-c", FIND_SCRIPT, "command-center-find", &pattern]);
+        args.push(if r.ignore_case { "1" } else { "0" }.into());
+        args.extend(restic_args(i)?);
+        let mut plan = Plan::new("Search backup history", "sh", args, &p::home());
+        plan.timeout_seconds = 4 * 3600;
+        plan.explanation = format!("Search every snapshot for “{pattern}” and list the saved versions. Read-only: nothing is restored or changed. KWallet may request an unlock.");
+        return Ok(plan);
+    }
     if ["snapshots", "snapshot-files", "restic-check", "restic-access", "restore"].contains(&r.action.as_str()) {
         let mut args = restic_args(i)?;
         let mut plan = Plan::new("Restic", "restic", vec![], &p::home());
@@ -453,6 +495,32 @@ pub async fn sync_status(app: tauri::AppHandle) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn file_history_search_patterns_are_validated_and_passed_literally() {
+        assert!(find_pattern("").is_err());
+        assert!(find_pattern("  ").is_err());
+        assert!(find_pattern("--password-file=/x").is_err());
+        assert!(find_pattern("a\nb").is_err());
+        assert!(find_pattern(&"x".repeat(1025)).is_err());
+        assert_eq!(find_pattern(" notes.md ").unwrap(), "notes.md");
+        assert_eq!(find_pattern("~/Documents/a b.txt").unwrap(), p::home().join("Documents/a b.txt").to_string_lossy());
+        let password = tempfile::NamedTempFile::new().unwrap();
+        let mut s = Settings::default();
+        s.integrations.restic_repository = "/backup/repo".into();
+        s.integrations.restic_password_file = password.path().to_string_lossy().into_owned();
+        let plan = build_plan(
+            &Request { action: "snapshot-find".into(), pattern: "$(touch x); *.kdbx".into(), ..Default::default() },
+            &s,
+        )
+        .unwrap();
+        assert_eq!(plan.program, "sh");
+        // The pattern is a positional argument after the fixed script, never part of it.
+        assert_eq!(plan.args[0], "-c");
+        assert_eq!(plan.args[1], FIND_SCRIPT);
+        assert_eq!(plan.args[3], "$(touch x); *.kdbx");
+        assert_eq!(plan.args[4], "0");
+        assert_eq!(&plan.args[5..7], ["--repo", "/backup/repo"]);
+    }
     #[test]
     fn rejects_option_like_snapshot_ids() {
         assert!(snapshot_id("--delete").is_err());
@@ -617,8 +685,32 @@ mod workflow_tests {
         let (ok, out, err) = p::output(&mut plan.command(), 30).unwrap();
         assert!(ok, "{err}");
         assert!(out.contains("wanted.txt"));
-        let destination = temp.path().join("restored");
+        // File history: an absolute path, a case-insensitive name, and no match.
         let selected = data.join("wanted.txt");
+        let search = |pattern: &str, ignore_case: bool| -> Value {
+            let plan = build_plan(
+                &Request {
+                    action: "snapshot-find".into(),
+                    pattern: pattern.into(),
+                    ignore_case,
+                    ..Default::default()
+                },
+                &s,
+            )
+            .unwrap();
+            let (ok, out, err) = p::output(&mut plan.command(), 60).unwrap();
+            assert!(ok, "{err}");
+            serde_json::from_str(&out).unwrap()
+        };
+        let found = search(selected.to_str().unwrap(), false);
+        assert_eq!(found["snapshots"][0]["id"], id);
+        assert_eq!(found["matches"][0]["snapshot"], id);
+        assert_eq!(found["matches"][0]["matches"][0]["path"], selected.to_str().unwrap());
+        assert_eq!(found["matches"][0]["matches"][0]["size"], 10);
+        let by_name = search("WANTED.TXT", true);
+        assert_eq!(by_name["matches"][0]["matches"].as_array().unwrap().len(), 1);
+        assert_eq!(search("absent-*.bin", false)["matches"], json!([]));
+        let destination = temp.path().join("restored");
         let request = Request {
             action: "restore".into(),
             snapshot: id.into(),

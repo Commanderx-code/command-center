@@ -16,6 +16,8 @@ import {
   filterProjects,
   parseSnapshots,
   parseSnapshotFiles,
+  parseFileHistory,
+  formatBytes,
 } from "./feature-model.js";
 const integrationFields = [
   [
@@ -91,6 +93,7 @@ export function createFeatures(api) {
     snapshotId = "",
     snapshotDirectory = "/",
     fileRows = [],
+    fileHistory = [],
     favoritesOnly = false,
     group = "",
     polling = false,
@@ -133,6 +136,7 @@ export function createFeatures(api) {
        <div class="module-columns"><section class="panel module-panel"><h3>Snapshots</h3><div id="snapshots">${empty("Load snapshots to browse your backup repository.")}</div></section>
        <section class="panel module-panel"><h3>Snapshot browser</h3><div class="button-row"><input id="snapshot-directory" aria-label="Snapshot directory" value="/">${button("Browse", 'id="browse-snapshot"')}</div><div id="snapshot-files">${empty("Select a snapshot first.")}</div>
        <form id="restore-form" class="stack-form"><label>Selected snapshot<input id="restore-snapshot" readonly></label><label>Include path or pattern <small>Blank restores the whole snapshot. Restic patterns may match multiple files.</small><input id="restore-include" placeholder="/home/commander/Documents"></label><label>New destination folder <small>Must be a new folder beneath your home; its parent must exist.</small><input id="restore-target" required placeholder="~/Restore-2026-09-21"></label><button class="primary-button" type="submit">Review restore</button></form></section></div>
+       <section class="panel module-panel" id="file-history-panel"><h3>File history</h3><p class="settings-help">Find every saved version of a file across all snapshots, then restore the one you want into a new folder.</p><form id="file-history-form" class="button-row"><input id="file-history-pattern" aria-label="File, path or pattern" placeholder="~/Documents/notes.md or *.kdbx" maxlength="1024" required><label class="inline-check"><input type="checkbox" id="file-history-case">Ignore case</label><button class="primary-button" type="submit">Search backups</button></form><p class="settings-help">A name such as <code>notes.md</code> matches it in any folder. Start with <code>/</code> or <code>~/</code> for an exact path. <code>*</code> and <code>?</code> are wildcards. Searching reads every snapshot, so it can take a while on large repositories.</p><label class="inline-check"><input type="checkbox" id="file-history-changes" checked>Show only versions that changed</label><div id="file-history-results" aria-live="polite"></div></section>
        <section class="panel module-panel"><div class="panel-heading"><h3>Recovery readiness</h3>${button("Read recovery instructions", 'id="read-recovery"')}</div><div id="recovery-checks">${empty("Refresh health to check available recovery files.")}</div><pre id="recovery-notes" class="output" hidden></pre></section>
      </section>
      <section id="config-view" class="view">${head("Make it yours", "Configuration", "Edit the source, preview your changes, and keep a backup of the previous version.")}
@@ -300,6 +304,21 @@ export function createFeatures(api) {
         });
       }),
     );
+    $("#file-history-form").addEventListener(
+      "submit",
+      guard(async (event) => {
+        event.preventDefault();
+        const pattern = $("#file-history-pattern").value.trim();
+        await action(
+          { action: "snapshot-find", pattern, ignoreCase: $("#file-history-case").checked },
+          (job) => {
+            fileHistory = parseFileHistory(job);
+            renderFileHistory(pattern);
+          },
+        );
+      }),
+    );
+    $("#file-history-changes").addEventListener("change", () => renderFileHistory());
     $("#read-recovery").addEventListener(
       "click",
       guard(async () => {
@@ -794,6 +813,43 @@ export function createFeatures(api) {
           "Press Browse to read this snapshot directory.",
         );
         renderSnapshots();
+      }),
+    );
+  }
+  let fileHistoryPattern = "";
+  function renderFileHistory(pattern = fileHistoryPattern) {
+    fileHistoryPattern = pattern;
+    const onlyChanges = $("#file-history-changes").checked;
+    const statusLabel = { first: "First saved", changed: "Changed", same: "Same as previous" };
+    const shown = fileHistory.slice(0, 50);
+    $("#file-history-results").innerHTML = !fileHistory.length
+      ? empty(`No saved versions match “${e(pattern)}”. Check the spelling, try Ignore case, or search just the file name.`)
+      : `${fileHistory.length > shown.length ? `<p class="settings-help">Showing ${shown.length} of ${fileHistory.length} matching paths. Search a more specific path to narrow the results.</p>` : ""}${shown
+          .map((entry, index) => {
+            const rows = entry.versions
+              .map((v, row) => ({ v, row }))
+              .filter(({ v }) => !onlyChanges || v.status !== "same");
+            const hidden = entry.versions.length - rows.length;
+            return `<article class="history-entry"><h4><code>${e(entry.path)}</code>${entry.type === "dir" ? " (folder)" : ""}</h4><p class="settings-help">${entry.versions.length} saved ${entry.versions.length === 1 ? "copy" : "copies"} · ${entry.distinct} different ${entry.distinct === 1 ? "version" : "versions"} · last saved ${e(age(entry.lastSeen))}</p>${entry.missingFrom ? `<p class="status-strip">Not in the ${entry.missingFrom} newer ${entry.missingFrom === 1 ? "snapshot" : "snapshots"} of this backup. It may have been deleted or moved after ${e(age(entry.lastSeen))}.</p>` : ""}<div class="history-rows">${rows
+              .map(
+                ({ v, row }) =>
+                  `<div class="history-row"><span class="status-badge ${v.status === "same" ? "muted" : "success"}">${statusLabel[v.status]}</span><span><strong>${e(age(v.time))}</strong><small>Snapshot ${e(v.shortId)}${v.hostname ? ` · ${e(v.hostname)}` : ""}</small></span><span><small>Modified</small>${e(age(v.mtime))}</span><span><small>Size</small>${e(entry.type === "dir" ? "—" : formatBytes(v.size))}</span>${button("Restore this version", `data-history-restore="${index}:${row}"`)}</div>`,
+              )
+              .join("")}</div>${hidden ? `<p class="settings-help">${hidden} identical ${hidden === 1 ? "copy" : "copies"} hidden.</p>` : ""}</article>`;
+          })
+          .join("")}`;
+    $$("[data-history-restore]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const [index, row] = btn.dataset.historyRestore.split(":").map(Number);
+        const entry = fileHistory[index];
+        const version = entry.versions[row];
+        snapshotId = version.snapshot;
+        $("#restore-snapshot").value = version.snapshot;
+        $("#restore-include").value = entry.path;
+        if (snapshots.length) renderSnapshots();
+        $("#restore-target").scrollIntoView({ block: "center", behavior: "smooth" });
+        $("#restore-target").focus({ preventScroll: true });
+        toast(`Version from ${age(version.time)} selected. Choose a new destination folder, then Review restore.`);
       }),
     );
   }

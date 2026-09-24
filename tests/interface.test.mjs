@@ -258,6 +258,53 @@ test("snapshot results load through the result endpoint after a completed job", 
   }
 });
 
+test("file history searches all snapshots, lists changed versions and prefills a reviewed restore", async () => {
+  const snap = (id, time) => ({ id: id.repeat(8), short_id: id.repeat(8), time, hostname: "desk", paths: ["/home/me"] });
+  const [s1, s2, s3, s4] = [snap("a", "2026-09-01T10:00:00Z"), snap("b", "2026-09-02T10:00:00Z"), snap("c", "2026-09-03T10:00:00Z"), snap("d", "2026-09-04T10:00:00Z")];
+  const hit = (s, size, mtime) => ({ snapshot: s.id, hits: 1, matches: [{ path: "/home/me/<b>notes</b>.txt", type: "file", size, mtime }] });
+  const x = await setup({
+    job_result: { result: JSON.stringify({ snapshots: [s1, s2, s3, s4], matches: [hit(s3, 2048, "2026-09-02T09:00:00Z"), hit(s2, 2048, "2026-09-02T09:00:00Z"), hit(s1, 10, "2026-08-30T09:00:00Z")] }), output: "" },
+  });
+  try {
+    x.$('[data-view="backup"]').click();
+    x.$("#file-history-pattern").value = "~/notes.txt";
+    x.$("#file-history-case").checked = true;
+    submit(x.w, x.$("#file-history-form"));
+    await settle();
+    const request = x.calls.find((c) => c.command === "prepare_job").args.request;
+    assert.equal(request.action, "snapshot-find");
+    assert.equal(request.pattern, "~/notes.txt");
+    assert.equal(request.ignoreCase, true);
+    assert.equal(x.$("#review-dialog").open, true);
+    submit(x.w, x.$("#review-form"));
+    await settle();
+    x.responses.job_history = { jobs: [{ id: "job-1", action: "snapshot-find", title: "Search backup history", status: "succeeded", command: "sh", cwd: "/home/me", startedAt: Date.now() - 1000, finishedAt: Date.now(), exitCode: 0, output: "" }] };
+    x.$("#activity-refresh").click();
+    await settle();
+    const results = x.$("#file-history-results");
+    assert.equal(results.querySelector("b"), null, "paths are escaped");
+    assert.match(results.textContent, /<b>notes<\/b>\.txt/);
+    assert.match(results.textContent, /3 saved copies · 2 different versions/);
+    assert.match(results.textContent, /Not in the 1 newer snapshot/);
+    assert.match(results.textContent, /2\.0 KiB/);
+    assert.equal(results.querySelectorAll(".history-row").length, 2);
+    assert.match(results.textContent, /1 identical copy hidden/);
+    x.$("#file-history-changes").checked = false;
+    x.$("#file-history-changes").dispatchEvent(new x.w.Event("change"));
+    assert.equal(results.querySelectorAll(".history-row").length, 3);
+    results.querySelector("[data-history-restore]").click();
+    assert.equal(x.$("#restore-snapshot").value, s3.id);
+    assert.equal(x.$("#restore-include").value, "/home/me/<b>notes</b>.txt");
+    x.$("#restore-target").value = "~/Recovered-notes";
+    submit(x.w, x.$("#restore-form"));
+    await settle();
+    const restore = x.calls.findLast((c) => c.command === "prepare_job").args.request;
+    assert.deepEqual({ ...restore }, { action: "restore", snapshot: s3.id, target: "~/Recovered-notes", include: "/home/me/<b>notes</b>.txt" });
+  } finally {
+    x.dom.window.close();
+  }
+});
+
 const toolboxCatalog = {
   revision: "fixture-revision",
   actions: [

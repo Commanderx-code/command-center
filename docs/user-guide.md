@@ -11,7 +11,7 @@
 - **Launch profiles:** save a documentation URL and choose whether a project opens its editor, terminal, and documentation together.
 - **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Operations that use different resources can run at the same time (see [Running several jobs](#running-several-jobs)). Background output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
 - **System Sync:** inspect dotfiles changes, compare Ghostty/Fastfetch sources with their live files, view Home Manager generations, fetch/pull the config repository, build, and apply Home Manager.
-- **Backup & Restore:** run your personal backup helper, run the full recovery helper in a terminal for encryption prompts, load recent Restic snapshots, browse directories, check repository metadata, and restore a snapshot or selected path/pattern into a new folder beneath your home directory.
+- **Backup & Restore:** run your personal backup helper, run the full recovery helper in a terminal for encryption prompts, load recent Restic snapshots, browse directories, check repository metadata, and restore a snapshot or selected path/pattern into a new folder beneath your home directory, and search a file's history across all snapshots to restore a chosen version.
 - **Configuration:** Ghostty font, theme, padding, opacity, and cursor controls; Fastfetch logo/separator controls and module add/remove/reordering. Both include a source editor and illustrative preview. Ghostty uses its installed validator. Fastfetch validates JSONC syntax and module structure; it does not execute command modules or claim full runtime/schema validation.
 - **System Health:** filesystem usage, failed user/system services, battery information, cached Arch package updates, installed tools, and locally recorded backup freshness.
 - **Needs attention:** changed/unpushed/behind repositories, unreviewed failed jobs, overdue or unavailable backup records, disks at least 90% full, and failed services.
@@ -111,6 +111,16 @@ Every run previews the command and working folder and uses the existing job life
 ## Backup overview
 
 Backup & Restore shows the location status reported by your backup-health helper, the exact last successful backup time when available, and the next setup step. A missing report is **unknown**, not proof that a drive is disconnected. Remote Restic locations are labeled as not connection-tested. Personal/full backup buttons require an executable configured helper and are disabled while checking health or when the helper explicitly reports a configured local drive disconnected. Refresh after attaching a drive. Helpers retain their own checks and prompts.
+
+## Backup file history
+
+**Backup & Restore → File history** finds every saved copy of a file across all snapshots in the configured Restic repository, so you can pick the right version to restore. Enter a file name (`notes.md` matches it in any folder), an exact path starting with `/` or `~/`, or a pattern with `*` and `?`. Select **Ignore case** if needed, then **Search backups**.
+
+The search is a reviewed, read-only job. It lists snapshots, then runs `restic find` over all of them, so it can take a while on large repositories and may ask KWallet to unlock. Nothing is restored.
+
+Results are grouped by path, newest first. Each saved copy shows the snapshot time, snapshot ID, host, file modification time and size, and whether it is the **first saved** copy, **changed** from the previous copy (different size or modification time), or the **same as previous**. **Show only versions that changed** hides identical copies. If newer snapshots of the same host and backup path no longer contain the file, the result says it may have been deleted or moved.
+
+**Restore this version** selects that snapshot and the file's exact path in the restore form. Choose a new destination folder and **Review restore**: restores never overwrite existing files. Searches that match a very large number of files cannot be read; search a more specific path instead. File names containing `*`, `?` or `[` are treated as patterns by Restic, so check the include path before restoring such a file.
 
 ## Services and backup timers
 

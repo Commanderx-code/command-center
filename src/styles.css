@@ -357,3 +357,11 @@ button:disabled { cursor:default; }
 #setup-form, #bundle-dialog { font-size:14px; line-height:1.6; }
 #setup-form select { margin-top:.5rem; }
 #setup-form h3:focus, #view-title:focus { outline:none; }
+.inline-check { display:inline-flex; gap:8px; align-items:center; }
+.inline-check input { accent-color:var(--cyan); }
+.history-entry { border-top:1px solid var(--line); padding-top:14px; margin-top:14px; }
+.history-entry h4 { margin:0 0 4px; overflow-wrap:anywhere; }
+.history-rows { display:grid; gap:6px; margin-top:8px; }
+.history-row { display:grid; grid-template-columns:minmax(120px,auto) minmax(160px,1fr) minmax(130px,auto) minmax(80px,auto) auto; gap:12px; align-items:center; padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
+.history-row small { display:block; color:var(--muted); font-size:11px; }
+@media (max-width: 1200px) { .history-row { grid-template-columns:1fr 1fr; } }

@@ -12,6 +12,8 @@ import {
   attentionItems,
   filterProjects,
   parseSnapshots,
+  parseFileHistory,
+  formatBytes,
   parseSnapshotFiles,
 } from "../src/feature-model.js";
 
@@ -102,4 +104,45 @@ test("backup results reject truncation and distinguish snapshot headers from fil
   });
   assert.equal(nodes.length, 1);
   assert.equal(nodes[0].path, "/home");
+});
+
+test("file history groups versions by path, marks changes and detects deletion", () => {
+  const snap = (id, time, host = "desk", paths = ["/home/me"]) => ({
+    id: id.repeat(8), short_id: id.repeat(8).slice(0, 8), time, hostname: host, paths,
+  });
+  const file = (path, size, mtime) => ({ path, type: "file", size, mtime });
+  const s1 = snap("a", "2026-09-01T10:00:00Z");
+  const s2 = snap("b", "2026-09-02T10:00:00Z");
+  const s3 = snap("c", "2026-09-03T10:00:00Z");
+  const s4 = snap("d", "2026-09-04T10:00:00Z");
+  const other = snap("e", "2026-09-05T10:00:00Z", "laptop");
+  const result = JSON.stringify({
+    snapshots: [s1, s2, s3, s4, other],
+    matches: [
+      { snapshot: s4.id, hits: 1, matches: [file("/home/me/sub/notes.txt", 2, "m0")] },
+      { snapshot: s3.id, hits: 2, matches: [file("/home/me/notes.txt", 10, "m2"), file("/home/me/sub/notes.txt", 2, "m0")] },
+      { snapshot: s2.id, hits: 2, matches: [file("/home/me/notes.txt", 10, "m2"), file("/home/me/sub/notes.txt", 2, "m0")] },
+      { snapshot: s1.id, hits: 2, matches: [file("/home/me/notes.txt", 3, "m1"), file("/home/me/sub/notes.txt", 2, "m0")] },
+    ],
+  });
+  const [notes, sub] = parseFileHistory({ result });
+  assert.equal(notes.path, "/home/me/notes.txt");
+  assert.deepEqual(notes.versions.map((v) => v.shortId), ["cccccccc", "bbbbbbbb", "aaaaaaaa"]);
+  assert.deepEqual(notes.versions.map((v) => v.status), ["same", "changed", "first"]);
+  assert.equal(notes.distinct, 2);
+  // Deleted before snapshot d; the laptop's snapshot is another machine and ignored.
+  assert.equal(notes.missingFrom, 1);
+  assert.equal(sub.versions.length, 4);
+  assert.equal(sub.distinct, 1);
+  assert.equal(sub.missingFrom, 0);
+  assert.deepEqual(parseFileHistory({ result: JSON.stringify({ snapshots: [s1], matches: [] }) }), []);
+  assert.throws(() => parseFileHistory({ result: '{"snapshots":[' }), /more specific path/);
+  assert.throws(() => parseFileHistory({ result: "[]" }), /Unexpected/);
+});
+
+test("byte sizes are human readable", () => {
+  assert.equal(formatBytes(0), "0 B");
+  assert.equal(formatBytes(1536), "1.5 KiB");
+  assert.equal(formatBytes(5 * 1024 ** 3), "5.0 GiB");
+  assert.equal(formatBytes(null), "—");
 });

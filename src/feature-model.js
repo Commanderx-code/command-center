@@ -131,3 +131,78 @@ export function parseSnapshotFiles(job) {
     .map((line) => JSON.parse(line))
     .filter((v) => v.struct_type === "node" || (v.path && v.type));
 }
+export function formatBytes(size) {
+  if (typeof size !== "number" || !Number.isFinite(size) || size < 0) return "—";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = size;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${unit ? value.toFixed(1) : value} ${units[unit]}`;
+}
+// Groups a snapshot-find result by path, newest version first. A version is
+// "changed" when its size or modification time differs from the next older one.
+export function parseFileHistory(job) {
+  let data;
+  try {
+    data = JSON.parse(job.result || job.output);
+  } catch {
+    throw new Error(
+      "The search returned too many matches to read. Search a more specific path, for example ~/Documents/report.odt.",
+    );
+  }
+  if (!Array.isArray(data?.snapshots) || !Array.isArray(data?.matches))
+    throw new Error("Unexpected Restic search response");
+  const snapshots = new Map(data.snapshots.map((s) => [s.id, s]));
+  const paths = new Map();
+  for (const hit of data.matches) {
+    const snapshot = snapshots.get(hit.snapshot);
+    if (!snapshot) continue;
+    for (const match of hit.matches || []) {
+      if (!paths.has(match.path)) paths.set(match.path, []);
+      paths.get(match.path).push({
+        snapshot: snapshot.id,
+        shortId: snapshot.short_id || snapshot.id.slice(0, 8),
+        time: snapshot.time,
+        hostname: snapshot.hostname || "",
+        type: match.type,
+        size: typeof match.size === "number" ? match.size : null,
+        mtime: match.mtime,
+      });
+    }
+  }
+  return [...paths]
+    .map(([path, versions]) => {
+      versions.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+      versions.forEach((version, index) => {
+        const older = versions[index + 1];
+        version.status = !older
+          ? "first"
+          : older.size !== version.size || older.mtime !== version.mtime
+            ? "changed"
+            : "same";
+      });
+      const newest = versions[0];
+      // Newer snapshots of the same host and backup path that lack this file.
+      const covers = (s) =>
+        (s.hostname || "") === newest.hostname &&
+        (s.paths || []).some((root) => {
+          const base = root.replace(/\/+$/, "") || "/";
+          return path === base || path.startsWith(base === "/" ? "/" : `${base}/`);
+        });
+      const missingFrom = data.snapshots.filter(
+        (s) => covers(s) && Date.parse(s.time) > Date.parse(newest.time),
+      ).length;
+      return {
+        path,
+        type: newest.type,
+        versions,
+        distinct: versions.filter((v) => v.status !== "same").length,
+        lastSeen: newest.time,
+        missingFrom,
+      };
+    })
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
