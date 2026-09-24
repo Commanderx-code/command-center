@@ -36,6 +36,8 @@
       "icons/icon.png"
     ],
     "category": "DeveloperTool",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
     "shortDescription": "Your Linux workstation control center",
     "longDescription": "Manage repositories, Home Manager, backups, configuration and workstation health.",
     "linux": {

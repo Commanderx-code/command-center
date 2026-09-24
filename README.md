@@ -15,6 +15,7 @@
   <a href="https://github.com/Commanderx-code/command-center/releases/latest"><img src="https://img.shields.io/github/v/release/Commanderx-code/command-center?style=flat-square&amp;color=27b7cd" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/platform-Linux-27b7cd?style=flat-square" alt="Platform: Linux" />
   <img src="https://img.shields.io/badge/desktop-Tauri_2-7371fc?style=flat-square" alt="Desktop: Tauri 2" />
+  <img src="https://img.shields.io/badge/license-MIT-27b7cd?style=flat-square" alt="License: MIT" />
 </p>
 
 <p align="center">
@@ -122,3 +123,7 @@ Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop ope
 ## Built with
 
 [Tauri](https://github.com/tauri-apps/tauri) provides the desktop shell, Rust handles local system operations, and JavaScript renders the interface. The Toolbox catalog and scripts come from [Commander Toolbox](https://github.com/Commanderx-code/commander-toolbox), built on Linutil. [xterm.js](https://github.com/xtermjs/xterm.js) and [portable-pty](https://github.com/wezterm/wezterm) power the embedded terminal.
+
+## License
+
+Command Center is released under the [MIT License](LICENSE). Bundled third-party components keep their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).

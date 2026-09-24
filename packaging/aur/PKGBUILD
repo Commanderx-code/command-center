@@ -7,6 +7,7 @@ pkgrel=1
 pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
 arch=('x86_64')
 url='https://github.com/Commanderx-code/command-center'
+license=('MIT')
 depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'libsoup3' 'glib2' 'cairo' 'gdk-pixbuf2' 'dbus' 'glibc' 'libgcc' 'hicolor-icon-theme')
 makedepends=('git' 'nodejs' 'npm' 'rust' 'pkgconf')
 optdepends=('libnotify: desktop notifications' 'restic: backup recovery' 'fish: Fish custom actions')
@@ -31,4 +32,5 @@ package() {
   install -Dm644 packaging/io.helixstack.commandcenter.desktop "$pkgdir/usr/share/applications/io.helixstack.commandcenter.desktop"
   install -Dm644 src-tauri/icons/command-center.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/io.helixstack.commandcenter.svg"
   install -Dm644 THIRD_PARTY.md "$pkgdir/usr/share/doc/$pkgname/THIRD_PARTY.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

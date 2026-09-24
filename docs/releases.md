@@ -58,4 +58,4 @@ These are installation and launch checks, not end-to-end validation of system-ch
 2. Clone the AUR repository with an account that has an SSH key registered on aur.archlinux.org: `git clone ssh://aur@aur.archlinux.org/command-center.git`. For the first upload this creates the package.
 3. Copy `PKGBUILD` and `.SRCINFO` into that clone, commit, and push.
 
-AUR packages must declare a `license`. The project does not include a license file yet, so choose a license before submitting.
+The recipe declares the project's MIT license and installs `LICENSE` under `/usr/share/licenses/command-center/`. Add a `# Maintainer: Name <email>` line at the top of `PKGBUILD` before the first AUR upload.
