@@ -36,7 +36,7 @@ Open a category folder, then its subfolders to reach a tool. Category buttons ar
 
 Use **Toolbox → Quick setup** to select a Myfish shell, dotfiles configuration, or application, then **Review & run**. Installer-specific choices and confirmations remain in the original script. **Run tools in** selects the embedded terminal or the external terminal configured in Settings. Return to a session from **Terminal** or its Activity entry. Only the latest session buffer remains available; it is lost on app exit. External terminal output stays external.
 
-Future catalog updates require updating the pinned revision in `src-tauri/Cargo.toml` and `src-tauri/src/toolbox.rs`, refreshing Cargo.lock, running the [development checks](development.md#checks), and rebuilding. No sibling checkout is needed to build or run Command Center. Toolbox favorites are stored in the webview’s local storage. Activity records the action ID and bundled revision, but no terminal input or transcript.
+Future catalog updates require updating the pinned revision in `src-tauri/Cargo.toml` and `src-tauri/src/toolbox.rs`, refreshing Cargo.lock, running the [development checks](development.md#checks), and rebuilding. No sibling checkout is needed to build or run Command Center. Toolbox favorites are stored in the app’s private `toolbox-favorites.json` file (0.6.0 and later moves any favorites saved by earlier versions there on first launch). The browser preview keeps them in local storage. Activity records the action ID and bundled revision, but no terminal input or transcript.
 
 ## Operational behavior
 

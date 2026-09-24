@@ -80,6 +80,7 @@ pub fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
     use std::io::Write;
     fs::create_dir_all(path.parent().ok_or("Invalid path")?).map_err(|e| e.to_string())?;
     let tmp = path.with_extension(format!("tmp-{}", now()));
+    let parent = path.parent().ok_or("Invalid path")?;
     let result = (|| {
         let mut file = fs::OpenOptions::new()
             .write(true)
@@ -90,7 +91,10 @@ pub fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
         file.write_all(data)
             .and_then(|_| file.sync_all())
             .map_err(|e| e.to_string())?;
-        fs::rename(&tmp, path).map_err(|e| e.to_string())
+        fs::rename(&tmp, path).map_err(|e| e.to_string())?;
+        // Persist the rename itself; some filesystems do not support directory sync.
+        let _ = fs::File::open(parent).and_then(|dir| dir.sync_all());
+        Ok(())
     })();
     if result.is_err() {
         let _ = fs::remove_file(tmp);

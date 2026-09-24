@@ -2,6 +2,16 @@ import { normalizeIntegrations } from "./preferences.js";
 export function bundleSummary(bundle) {
   return `${bundle.repositories.length} repositories · ${Object.keys(bundle.workspace).length} workspace profiles · ${bundle.operations.workflows.length} workflows · ${bundle.operations.profiles.length} machine profiles · ${bundle.operations.tools.length} personal tools · ${bundle.toolboxFavorites.length} Toolbox favorites`;
 }
+export function keptSummary(kept = []) {
+  return kept.length
+    ? `Already on this machine and kept unchanged (${kept.length}): ${kept.join(", ")}`
+    : "";
+}
+export function recoveryMessage(recovery) {
+  return recovery.error
+    ? `An interrupted setup import could not be rolled back automatically: ${recovery.error}`
+    : `An interrupted setup import was rolled back and your previous setup restored. Its backup remains at ${recovery.restored}. Import the bundle again when ready.`;
+}
 export function mergeDetected(current, detected) {
   return normalizeIntegrations({
     ...current,
@@ -39,6 +49,7 @@ export function createSetupCenter({
     exporting = false,
     preview = null,
     previewHome = "",
+    previewMode = "merge",
     previewVersion = 0,
     draftVersion = 0,
     busy = false,
@@ -54,7 +65,7 @@ export function createSetupCenter({
   document.body.insertAdjacentHTML(
     "beforeend",
     `<dialog id="setup-dialog" class="wide-dialog" aria-labelledby="setup-title"><div class="dialog-card"><div class="dialog-heading"><h2 id="setup-title">Set up this machine</h2><button type="button" id="setup-close" class="secondary-button">Close</button></div><p id="setup-machine"></p><p id="setup-progress" role="status"></p><form id="setup-form"><section data-setup-step="0"><h3 tabindex="-1">1. Your workspace</h3><label>Display name<input id="setup-name" required maxlength="40"></label><label>Repository scan folders — one per line<textarea id="setup-roots" rows="4" required></textarea></label><p>Use absolute or ~/ paths. Imported repositories are discovered here once their folders exist.</p><button type="button" id="setup-import-link" class="secondary-button">Import an existing setup…</button></section><section data-setup-step="1" hidden><h3 tabindex="-1">2. Connect existing tools</h3><p>Detection fills empty fields. Review these values before saving.</p><button type="button" id="setup-detect" class="secondary-button">Detect existing setup</button>${fields.map(([key, label]) => `<label>${label}<input id="setup-${key}" autocomplete="off" maxlength="4096"></label>`).join("")}<p>Credential files and wallet entries stay configured in Settings → System integrations.</p></section><section data-setup-step="2" hidden><h3 tabindex="-1">3. Check this machine</h3><button type="button" id="setup-check" class="secondary-button">Check prerequisites</button><div id="setup-checks"></div><p>Missing tools can be installed through Toolbox. Paths and credentials can be adjusted in Settings. Nothing is installed here.</p><div class="button-row"><button type="button" id="setup-toolbox" class="secondary-button">Open Toolbox</button><button type="button" id="setup-settings" class="secondary-button">Open Settings</button></div><label>Saved machine profile<select id="setup-profile"><option value="">No profile selected</option></select></label><button type="button" id="setup-assess" class="secondary-button">Inspect profile</button><div id="setup-assessment"></div></section><section data-setup-step="3" hidden><h3 tabindex="-1">4. Review & save</h3><p>Save these connections. Run installers and profile steps separately in Workflows after reviewing each command.</p><pre id="setup-review" class="output" tabindex="0" aria-label="Setup settings to save"></pre></section><p id="setup-status" role="status"></p><div class="dialog-actions"><button type="button" id="setup-back" class="secondary-button">Back</button><button type="button" id="setup-next" class="primary-button">Next</button><button type="submit" id="setup-save" class="primary-button" hidden>Save setup</button></div></form></div></dialog>
-  <dialog id="bundle-dialog" class="wide-dialog" aria-labelledby="bundle-title"><div class="dialog-card"><h2 id="bundle-title">Review setup bundle</h2><p id="bundle-description"></p><label id="bundle-home-label">Home folder on this machine<input id="bundle-home" maxlength="4096"></label><button type="button" id="bundle-preview" class="secondary-button">Update preview</button><p id="bundle-summary"></p><p>Credential files, wallet entries, activity logs, and file contents are excluded. Saved commands are included: inspect them for private values before sharing. Paths inside command text and input values are not rewritten.</p><pre id="bundle-content" class="output bundle-content" tabindex="0" aria-label="Full setup bundle preview"></pre><p id="bundle-error" role="alert"></p><label id="bundle-consent-label" class="check-row"><input type="checkbox" id="bundle-consent">Replace this machine’s saved settings, workflows, personal tools, workspace profiles, and Toolbox favorites with this preview.</label><div class="dialog-actions"><button type="button" id="bundle-cancel" class="secondary-button">Cancel</button><button type="button" id="bundle-apply" class="primary-button" disabled>Import setup</button></div></div></dialog>`,
+  <dialog id="bundle-dialog" class="wide-dialog" aria-labelledby="bundle-title"><div class="dialog-card"><h2 id="bundle-title">Review setup bundle</h2><p id="bundle-description"></p><label id="bundle-home-label">Home folder on this machine<input id="bundle-home" maxlength="4096"></label><fieldset id="bundle-mode"><legend>Import method</legend><label class="check-row"><input type="radio" name="bundle-mode" value="merge" checked>Merge: keep everything on this machine and add new items</label><label class="check-row"><input type="radio" name="bundle-mode" value="replace">Replace: use the bundle’s saved setup instead of this machine’s</label></fieldset><button type="button" id="bundle-preview" class="secondary-button">Update preview</button><p id="bundle-summary"></p><p id="bundle-kept"></p><p>Credential files, wallet entries, activity logs, and file contents are excluded. Saved commands are included: inspect them for private values before sharing. Paths inside command text and input values are not rewritten.</p><pre id="bundle-content" class="output bundle-content" tabindex="0" aria-label="Full setup bundle preview"></pre><p id="bundle-error" role="alert"></p><label id="bundle-consent-label" class="check-row"><input type="checkbox" id="bundle-consent"><span id="bundle-consent-text"></span></label><div class="dialog-actions"><button type="button" id="bundle-cancel" class="secondary-button">Cancel</button><button type="button" id="bundle-apply" class="primary-button" disabled>Import setup</button></div></div></dialog>`,
   );
   const fail = (where, err) => {
     $(where).textContent = String(err.message || err);
@@ -274,8 +285,9 @@ export function createSetupCenter({
     previewVersion++;
     preview = null;
     $("#bundle-content").textContent = "";
+    $("#bundle-kept").textContent = "";
     $("#bundle-summary").textContent =
-      "Update the preview after changing the home folder.";
+      "Update the preview after changing the home folder or import method.";
     $("#bundle-consent").checked = false;
     consent();
   }
@@ -284,16 +296,29 @@ export function createSetupCenter({
     $("#bundle-error").textContent = "";
     const version = previewVersion;
     const home = $("#bundle-home").value.trim();
+    const mode = importMode();
     const result = await invoke("preview_setup_bundle", {
       text,
       targetHome: home,
+      mode,
     });
     if (version !== previewVersion) return;
-    preview = result;
+    preview = result.bundle;
     previewHome = home;
+    previewMode = mode;
     $("#bundle-summary").textContent = bundleSummary(preview);
+    $("#bundle-kept").textContent = keptSummary(result.kept);
     $("#bundle-content").textContent = JSON.stringify(preview, null, 2);
     consent();
+  }
+  function importMode() {
+    return $('input[name="bundle-mode"]:checked')?.value || "merge";
+  }
+  function describeMode() {
+    const merge = importMode() === "merge";
+    $("#bundle-consent-text").textContent = merge
+      ? "Add this preview’s new items to this machine’s saved setup."
+      : "Replace this machine’s saved settings, workflows, personal tools, workspace profiles, and Toolbox favorites with this preview.";
   }
   function showBundle(isExport) {
     exporting = isExport;
@@ -302,8 +327,11 @@ export function createSetupCenter({
       : "Review setup import";
     $("#bundle-description").textContent = isExport
       ? "Exports saved definitions. Unsaved drafts are not included."
-      : "Import replaces the listed saved definitions. A backup is kept, and the app reloads after import. Missing repositories are remembered for scanning; their files are not cloned. The automatic backup health helper stays configured for this machine; set it separately in Settings.";
+      : "Merge keeps this machine’s preferences and definitions and adds new ones; Replace swaps in the bundle’s saved definitions. A backup is kept, and the app reloads after import. Missing repositories are remembered for scanning; their files are not cloned. The automatic backup health helper stays configured for this machine; set it separately in Settings.";
     $("#bundle-home-label").hidden = isExport;
+    $("#bundle-mode").hidden = isExport;
+    $("#bundle-kept").textContent = "";
+    describeMode();
     $("#bundle-preview").hidden = isExport;
     $("#bundle-consent-label").hidden = isExport;
     $("#bundle-apply").textContent = isExport
@@ -362,6 +390,11 @@ export function createSetupCenter({
     }, "#bundle-error"),
   );
   $("#bundle-home").addEventListener("input", invalidate);
+  for (const radio of document.querySelectorAll('input[name="bundle-mode"]'))
+    radio.addEventListener("change", () => {
+      describeMode();
+      void safe(updatePreview, "#bundle-error")();
+    });
   $("#bundle-preview").addEventListener(
     "click",
     safe(updatePreview, "#bundle-error"),
@@ -397,11 +430,8 @@ export function createSetupCenter({
           text,
           targetHome: previewHome,
           expected: preview,
+          mode: previewMode,
         });
-        localStorage.setItem(
-          "command-center.toolbox-favorites",
-          JSON.stringify(result.toolboxFavorites),
-        );
         localStorage.removeItem("command-center-workflow-run");
         localStorage.setItem("command-center.setup-import-token", result.token);
         $("#bundle-status").textContent =
@@ -425,10 +455,6 @@ export function createSetupCenter({
           saved.token !==
             localStorage.getItem("command-center.setup-import-token")
         ) {
-          localStorage.setItem(
-            "command-center.toolbox-favorites",
-            JSON.stringify(saved.toolboxFavorites),
-          );
           localStorage.removeItem("command-center-workflow-run");
           localStorage.setItem(
             "command-center.setup-import-token",
@@ -440,6 +466,11 @@ export function createSetupCenter({
         if (saved?.backup)
           $("#bundle-status").textContent =
             `Previous setup backup: ${saved.backup}`;
+        if (saved?.recovery) {
+          const message = recoveryMessage(saved.recovery);
+          $("#bundle-status").textContent = message;
+          toast(message, true);
+        }
       } catch (error) {
         fail("#bundle-status", error);
       }

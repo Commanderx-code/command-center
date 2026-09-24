@@ -2,7 +2,12 @@
 use crate::{operations::Collection, platform as p, settings::Settings, workspace::Workspace};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{collections::BTreeMap, fs, path::PathBuf, sync::Mutex};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 use tauri::Manager;
 pub(crate) static WRITE_LOCK: Mutex<()> = Mutex::new(());
 const LIMIT: usize = 2_000_000;
@@ -39,13 +44,7 @@ impl Bundle {
         for path in &self.repositories {
             valid_path(path)?;
         }
-        if self
-            .toolbox_favorites
-            .iter()
-            .any(|id| id.is_empty() || id.len() > 500 || id.contains(['\0', '\n', '\r']))
-        {
-            return Err("Invalid Toolbox favorite".into());
-        }
+        crate::toolbox::validate_favorites(&self.toolbox_favorites)?;
         if serde_json::to_vec(self).map_err(|e| e.to_string())?.len() > LIMIT {
             return Err("Bundle exceeds 2 MB".into());
         }
@@ -168,7 +167,139 @@ fn strip_credentials(settings: &mut Settings) {
         i.restic_repository.clear();
     }
 }
-fn prepare(text: &str, target: &str, current: &Settings) -> Result<Bundle, String> {
+#[derive(Clone, Copy, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Mode {
+    #[default]
+    Replace,
+    Merge,
+}
+/// This machine's saved definitions, compared against an incoming bundle.
+#[derive(Default)]
+pub(crate) struct Current {
+    settings: Settings,
+    operations: Collection,
+    workspace: Workspace,
+    favorites: Vec<String>,
+}
+fn current(app: &tauri::AppHandle) -> Result<Current, String> {
+    Ok(Current {
+        settings: crate::settings::load_settings(app.clone())?.unwrap_or_default(),
+        operations: crate::operations::load_operations(app.clone())?,
+        workspace: crate::workspace::load_workspace(app.clone())?,
+        favorites: crate::toolbox::read_favorites(&crate::toolbox::favorites_file(app)?)?
+            .unwrap_or_default(),
+    })
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Preview {
+    bundle: Bundle,
+    kept: Vec<String>,
+}
+// Adds incoming items with new IDs. A differing item with an existing ID keeps the
+// local version and is reported; identical items are not conflicts.
+fn add_new<T: Serialize>(
+    local: &mut Vec<T>,
+    incoming: Vec<T>,
+    id: impl Fn(&T) -> &str,
+    label: impl Fn(&T) -> String,
+    kept: &mut Vec<String>,
+) {
+    for item in incoming {
+        match local.iter().find(|l| id(l) == id(&item)) {
+            None => local.push(item),
+            Some(existing) => {
+                if serde_json::to_value(existing).ok() != serde_json::to_value(&item).ok() {
+                    kept.push(label(&item));
+                }
+            }
+        }
+    }
+}
+/// Merge keeps every local definition and preference. It adds new definitions,
+/// scan folders and favorites, and fills only empty integration paths.
+fn merge(incoming: Bundle, current: &Current) -> Result<(Bundle, Vec<String>), String> {
+    let mut kept = Vec::new();
+    let mut settings = current.settings.clone();
+    for root in &incoming.settings.roots {
+        if !settings.roots.contains(root) {
+            settings.roots.push(root.clone());
+        }
+    }
+    add_new(
+        &mut settings.custom_actions,
+        incoming.settings.custom_actions,
+        |a| &a.id,
+        |a| format!("Quick action “{}”", a.name),
+        &mut kept,
+    );
+    let (to, from) = (&mut settings.integrations, &incoming.settings.integrations);
+    for (target, value) in [
+        (&mut to.dotfiles_path, &from.dotfiles_path),
+        (&mut to.flake_profile, &from.flake_profile),
+        (&mut to.backup_script, &from.backup_script),
+        (&mut to.full_backup_script, &from.full_backup_script),
+        (&mut to.restic_repository, &from.restic_repository),
+        (&mut to.ghostty_source, &from.ghostty_source),
+        (&mut to.fastfetch_source, &from.fastfetch_source),
+        (&mut to.recovery_notes_path, &from.recovery_notes_path),
+        (&mut to.secrets_directory, &from.secrets_directory),
+    ] {
+        if target.is_empty() {
+            *target = value.clone();
+        }
+    }
+    let mut operations = current.operations.clone();
+    let recipes = [
+        (&mut operations.workflows, incoming.operations.workflows, "Workflow"),
+        (&mut operations.profiles, incoming.operations.profiles, "Machine profile"),
+    ];
+    for (local, items, kind) in recipes {
+        add_new(local, items, |r| &r.id, |r| format!("{kind} “{}”", r.name), &mut kept);
+    }
+    add_new(
+        &mut operations.tools,
+        incoming.operations.tools,
+        |t| &t.id,
+        |t| format!("Personal tool “{}”", t.name),
+        &mut kept,
+    );
+    let mut workspace = current.workspace.clone();
+    for (path, project) in incoming.workspace {
+        match workspace.get(&path) {
+            None => {
+                workspace.insert(path, project);
+            }
+            Some(existing) => {
+                if serde_json::to_value(existing).ok() != serde_json::to_value(&project).ok() {
+                    kept.push(format!("Workspace profile {path}"));
+                }
+            }
+        }
+    }
+    let mut favorites = current.favorites.clone();
+    for id in incoming.toolbox_favorites {
+        if !favorites.contains(&id) {
+            favorites.push(id);
+        }
+    }
+    let bundle = Bundle {
+        settings,
+        operations,
+        workspace,
+        toolbox_favorites: favorites,
+        ..incoming
+    };
+    bundle.validate()?;
+    Ok((bundle, kept))
+}
+fn prepare(
+    text: &str,
+    target: &str,
+    current: &Current,
+    mode: Mode,
+) -> Result<(Bundle, Vec<String>), String> {
     if text.len() > LIMIT {
         return Err("Bundle exceeds 2 MB".into());
     }
@@ -178,7 +309,7 @@ fn prepare(text: &str, target: &str, current: &Settings) -> Result<Bundle, Strin
     strip_credentials(&mut bundle.settings);
     bundle.remap(target)?;
     let i = &mut bundle.settings.integrations;
-    let old = &current.integrations;
+    let old = &current.settings.integrations;
     // Health checks run automatically; imports cannot authorize a new executable.
     i.backup_health_script = old.backup_health_script.clone();
     i.restic_password_file = old.restic_password_file.clone();
@@ -188,8 +319,13 @@ fn prepare(text: &str, target: &str, current: &Settings) -> Result<Bundle, Strin
     if i.restic_repository.is_empty() {
         i.restic_repository = old.restic_repository.clone();
     }
-    bundle.settings.setup_completed = false;
-    Ok(bundle)
+    match mode {
+        Mode::Replace => {
+            bundle.settings.setup_completed = false;
+            Ok((bundle, Vec::new()))
+        }
+        Mode::Merge => merge(bundle, current),
+    }
 }
 #[tauri::command]
 pub fn setup_environment() -> Value {
@@ -210,6 +346,10 @@ pub fn create_setup_bundle(
 ) -> Result<Bundle, String> {
     let mut settings = crate::settings::load_settings(app.clone())?.unwrap_or_default();
     strip_credentials(&mut settings);
+    // Saved favorites are authoritative; the argument covers not-yet-migrated storage.
+    let toolbox_favorites =
+        crate::toolbox::read_favorites(&crate::toolbox::favorites_file(&app)?)?
+            .unwrap_or(toolbox_favorites);
     let bundle = Bundle {
         format: "command-center-setup".into(),
         version: 1,
@@ -228,12 +368,10 @@ pub fn preview_setup_bundle(
     app: tauri::AppHandle,
     text: String,
     target_home: String,
-) -> Result<Bundle, String> {
-    prepare(
-        &text,
-        &target_home,
-        &crate::settings::load_settings(app)?.unwrap_or_default(),
-    )
+    mode: Option<Mode>,
+) -> Result<Preview, String> {
+    let (bundle, kept) = prepare(&text, &target_home, &current(&app)?, mode.unwrap_or_default())?;
+    Ok(Preview { bundle, kept })
 }
 #[tauri::command]
 pub fn export_setup_bundle(app: tauri::AppHandle, mut bundle: Bundle) -> Result<String, String> {
@@ -250,17 +388,31 @@ pub fn export_setup_bundle(app: tauri::AppHandle, mut bundle: Bundle) -> Result<
     p::save(&path, &bundle)?;
     Ok(path.to_string_lossy().into_owned())
 }
-// All previous bytes are durably saved before the first replacement. Ordinary write
-// failures roll back completed writes; the backup also supports crash recovery.
-fn replace_files(files: &[(PathBuf, Vec<u8>)], backup: &std::path::Path) -> Result<(), String> {
-    replace_files_with(files, backup, p::atomic_write)
+type Previous = Vec<(PathBuf, Option<Vec<u8>>)>;
+const JOURNAL: &str = "setup-import-journal.json";
+static RECOVERY: Mutex<Option<Value>> = Mutex::new(None);
+#[derive(Serialize, Deserialize)]
+struct Journal {
+    backup: PathBuf,
 }
-fn replace_files_with(
+/// Every file an import may replace. Recovery restores only these paths.
+fn import_targets(app: &tauri::AppHandle) -> Result<Vec<PathBuf>, String> {
+    Ok(vec![
+        p::data_file(app, "setup-import.json")?,
+        crate::settings::location(app)?,
+        p::data_file(app, "operations.json")?,
+        p::data_file(app, "workspace.json")?,
+        crate::toolbox::favorites_file(app)?,
+    ])
+}
+// Previous bytes are durably saved, then a journal names that backup before the
+// first replacement. The journal is removed only once the files are consistent.
+fn begin(
     files: &[(PathBuf, Vec<u8>)],
-    backup: &std::path::Path,
-    mut write: impl FnMut(&std::path::Path, &[u8]) -> Result<(), String>,
-) -> Result<(), String> {
-    let old: Vec<(PathBuf, Option<Vec<u8>>)> = files
+    backup: &Path,
+    journal: &Path,
+) -> Result<Previous, String> {
+    let old: Previous = files
         .iter()
         .map(|(path, _)| {
             let bytes = match fs::read(path) {
@@ -272,17 +424,45 @@ fn replace_files_with(
         })
         .collect::<Result<_, String>>()?;
     p::save(backup, &old)?;
+    p::save(journal, &Journal { backup: backup.into() })?;
+    Ok(old)
+}
+fn restore(old: &[(PathBuf, Option<Vec<u8>>)]) -> Vec<String> {
+    let mut failures = Vec::new();
+    for (path, bytes) in old.iter().rev() {
+        let result = match bytes {
+            Some(v) => p::atomic_write(path, v),
+            None => match fs::remove_file(path) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+                _ => Ok(()),
+            },
+        };
+        if let Err(e) = result {
+            failures.push(format!("{}: {e}", path.display()));
+        }
+    }
+    failures
+}
+fn replace_files(
+    files: &[(PathBuf, Vec<u8>)],
+    backup: &Path,
+    journal: &Path,
+) -> Result<(), String> {
+    replace_files_with(files, backup, journal, p::atomic_write)
+}
+fn replace_files_with(
+    files: &[(PathBuf, Vec<u8>)],
+    backup: &Path,
+    journal: &Path,
+    mut write: impl FnMut(&Path, &[u8]) -> Result<(), String>,
+) -> Result<(), String> {
+    let old = begin(files, backup, journal)?;
     for (index, (path, data)) in files.iter().enumerate() {
         if let Err(error) = write(path, data) {
-            let mut failures = Vec::new();
-            for (path, bytes) in old.iter().take(index).rev() {
-                let result = match bytes {
-                    Some(v) => p::atomic_write(path, v),
-                    None => fs::remove_file(path).map_err(|e| e.to_string()),
-                };
-                if let Err(e) = result {
-                    failures.push(e);
-                }
+            let failures = restore(&old[..index]);
+            // A failed rollback keeps the journal so the next launch retries it.
+            if failures.is_empty() {
+                let _ = fs::remove_file(journal);
             }
             return Err(format!(
                 "Import failed: {error}. Rollback errors: {failures:?}. Previous contents: {}",
@@ -290,7 +470,50 @@ fn replace_files_with(
             ));
         }
     }
-    Ok(())
+    fs::remove_file(journal).map_err(|e| {
+        format!("Import was written but its journal could not be cleared ({e}); the previous setup will be restored on next launch")
+    })
+}
+/// Rolls back an import that was interrupted by a crash or power loss.
+fn recover(journal: &Path, allowed: &[PathBuf]) -> Result<Option<PathBuf>, String> {
+    let bytes = match fs::read(journal) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(format!("Cannot read {}: {e}", journal.display())),
+    };
+    let manual = |detail: String| {
+        format!("{detail}. Restore the previous setup manually, then remove {}", journal.display())
+    };
+    let entry: Journal = serde_json::from_slice(&bytes)
+        .map_err(|e| manual(format!("Unreadable import journal: {e}")))?;
+    let old: Previous = fs::read(&entry.backup)
+        .map_err(|e| e.to_string())
+        .and_then(|data| serde_json::from_slice(&data).map_err(|e| e.to_string()))
+        .map_err(|e| manual(format!("Cannot read {}: {e}", entry.backup.display())))?;
+    if old.iter().any(|(path, _)| !allowed.contains(path)) {
+        return Err(manual(format!("{} lists unexpected files", entry.backup.display())));
+    }
+    let failures = restore(&old);
+    if !failures.is_empty() {
+        return Err(manual(format!("Could not restore {failures:?}")));
+    }
+    fs::remove_file(journal).map_err(|e| e.to_string())?;
+    Ok(Some(entry.backup))
+}
+/// Runs before the interface loads; setup_import_state reports the result.
+pub fn recover_interrupted_import(app: &tauri::AppHandle) {
+    let result = (|| {
+        let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
+        recover(&p::data_file(app, JOURNAL)?, &import_targets(app)?)
+    })();
+    let notice = match result {
+        Ok(None) => return,
+        Ok(Some(backup)) => json!({"restored": backup}),
+        Err(error) => json!({"error": error}),
+    };
+    if let Ok(mut slot) = RECOVERY.lock() {
+        *slot = Some(notice);
+    }
 }
 #[tauri::command]
 pub fn import_setup_bundle(
@@ -298,14 +521,11 @@ pub fn import_setup_bundle(
     text: String,
     target_home: String,
     expected: Bundle,
+    mode: Option<Mode>,
 ) -> Result<Value, String> {
     let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     crate::jobs::require_idle(&app)?;
-    let bundle = prepare(
-        &text,
-        &target_home,
-        &crate::settings::load_settings(app.clone())?.unwrap_or_default(),
-    )?;
+    let (bundle, _) = prepare(&text, &target_home, &current(&app)?, mode.unwrap_or_default())?;
     if serde_json::to_value(&bundle).map_err(|e| e.to_string())?
         != serde_json::to_value(expected).map_err(|e| e.to_string())?
     {
@@ -316,27 +536,23 @@ pub fn import_setup_bundle(
         &format!("setup-backups/before-import-{}.json", p::now()),
     )?;
     let token = p::now().to_string();
-    let import_state =
-        json!({"token":token,"backup":backup,"toolboxFavorites":bundle.toolbox_favorites});
-    let files = vec![
-        (
-            p::data_file(&app, "setup-import.json")?,
-            serde_json::to_vec_pretty(&import_state).map_err(|e| e.to_string())?,
-        ),
-        (
-            crate::settings::location(&app)?,
-            serde_json::to_vec_pretty(&bundle.settings).map_err(|e| e.to_string())?,
-        ),
-        (
-            p::data_file(&app, "operations.json")?,
-            serde_json::to_vec_pretty(&bundle.operations).map_err(|e| e.to_string())?,
-        ),
-        (
-            p::data_file(&app, "workspace.json")?,
-            serde_json::to_vec_pretty(&bundle.workspace).map_err(|e| e.to_string())?,
-        ),
+    let import_state = json!({"token":token,"backup":backup});
+    let contents = [
+        serde_json::to_vec_pretty(&import_state),
+        serde_json::to_vec_pretty(&bundle.settings),
+        serde_json::to_vec_pretty(&bundle.operations),
+        serde_json::to_vec_pretty(&bundle.workspace),
+        serde_json::to_vec_pretty(&bundle.toolbox_favorites),
     ];
-    replace_files(&files, &backup)?;
+    let files = import_targets(&app)?
+        .into_iter()
+        .zip(contents)
+        .map(|(path, data)| data.map(|data| (path, data)).map_err(|e| e.to_string()))
+        .collect::<Result<Vec<_>, String>>()?;
+    replace_files(&files, &backup, &p::data_file(&app, JOURNAL)?)?;
+    if let Ok(mut notice) = RECOVERY.lock() {
+        *notice = None;
+    }
     Ok(import_state)
 }
 #[tauri::command]
@@ -360,12 +576,24 @@ pub async fn assess_setup_profile(
 
 #[tauri::command]
 pub fn setup_import_state(app: tauri::AppHandle) -> Result<Value, String> {
-    p::load(&p::data_file(&app, "setup-import.json")?)
+    let mut state: Value = p::load(&p::data_file(&app, "setup-import.json")?)?;
+    // Shown for this app session, including reloads; a later import clears it.
+    if let Some(recovery) = RECOVERY.lock().map_err(|e| e.to_string())?.clone() {
+        if !state.is_object() {
+            state = json!({});
+        }
+        state["recovery"] = recovery;
+    }
+    Ok(state)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn replace(text: &str, target: &str, settings: &Settings) -> Result<Bundle, String> {
+        let current = Current { settings: settings.clone(), ..Default::default() };
+        prepare(text, target, &current, Mode::Replace).map(|(bundle, _)| bundle)
+    }
     fn bundle() -> Bundle {
         Bundle {
             format: "command-center-setup".into(),
@@ -400,7 +628,7 @@ mod tests {
         let mut current = Settings::default();
         current.integrations.restic_password_file = "/home/new/credential".into();
         current.integrations.restic_repository = "/backup/local".into();
-        let imported = prepare(&serde_json::to_string(&b).unwrap(), "/home/new", &current).unwrap();
+        let imported = replace(&serde_json::to_string(&b).unwrap(), "/home/new", &current).unwrap();
         assert_eq!(imported.settings.roots, vec!["/home/new/code"]);
         assert!(imported.workspace.contains_key("/home/new/code/repo"));
         assert_eq!(
@@ -451,7 +679,7 @@ mod tests {
             ] {
                 let mut b = bundle();
                 b.settings.integrations.backup_health_script = incoming;
-                let imported = prepare(
+                let imported = replace(
                     &serde_json::to_string(&b).unwrap(),
                     temp.path().to_str().unwrap(),
                     &current,
@@ -487,13 +715,13 @@ mod tests {
         b.version = 9;
         assert!(b.validate().is_err());
         b.version = 1;
-        assert!(prepare(&"x".repeat(LIMIT + 1), "/home/new", &Settings::default()).is_err());
+        assert!(replace(&"x".repeat(LIMIT + 1), "/home/new", &Settings::default()).is_err());
         b.workspace.insert("~/repo".into(), Default::default());
         b.workspace
             .insert("/home/old/repo".into(), Default::default());
         assert!(b.remap("/home/new").unwrap_err().contains("duplicate"));
         assert!(valid_home("/home/new/../elsewhere").is_err());
-        assert!(prepare(
+        assert!(replace(
             r#"{"format":"command-center-setup","version":1}"#,
             "/home/new",
             &Settings::default()
@@ -525,7 +753,8 @@ mod tests {
             (last, b"last".to_vec()),
         ];
         let mut calls = 0;
-        let result = replace_files_with(&files, &backup, |path, data| {
+        let journal = temp.path().join("journal.json");
+        let result = replace_files_with(&files, &backup, &journal, |path, data| {
             calls += 1;
             if calls == 3 {
                 Err("simulated disk failure".into())
@@ -538,6 +767,7 @@ mod tests {
         assert!(!new.exists());
         let recorded: Vec<(PathBuf, Option<Vec<u8>>)> = p::load(&backup).unwrap();
         assert_eq!(recorded[0].1.as_deref(), Some(b"original".as_slice()));
+        assert!(!journal.exists(), "a completed rollback needs no recovery");
     }
     #[test]
     fn complete_transaction_preserves_private_backup_before_replacement() {
@@ -546,11 +776,99 @@ mod tests {
         let path = temp.path().join("settings.json");
         let backup = temp.path().join("backup.json");
         fs::write(&path, b"original").unwrap();
-        replace_files(&[(path.clone(), b"next".to_vec())], &backup).unwrap();
+        let journal = temp.path().join("journal.json");
+        replace_files(&[(path.clone(), b"next".to_vec())], &backup, &journal).unwrap();
+        assert!(!journal.exists());
         assert_eq!(fs::read(path).unwrap(), b"next");
         assert_eq!(
             fs::metadata(backup).unwrap().permissions().mode() & 0o777,
             0o600
         );
+    }
+
+    #[test]
+    fn interrupted_import_is_rolled_back_on_next_launch() {
+        let temp = tempfile::tempdir().unwrap();
+        let (old, new) = (temp.path().join("old.json"), temp.path().join("new.json"));
+        let (backup, journal) = (temp.path().join("backup.json"), temp.path().join("journal.json"));
+        fs::write(&old, b"original").unwrap();
+        let files = vec![(old.clone(), b"replacement".to_vec()), (new.clone(), b"new".to_vec())];
+        let allowed = vec![old.clone(), new.clone()];
+        assert_eq!(recover(&journal, &allowed).unwrap(), None);
+        // Simulate a crash after both replacements, before the journal is cleared.
+        begin(&files, &backup, &journal).unwrap();
+        for (path, data) in &files {
+            p::atomic_write(path, data).unwrap();
+        }
+        assert_eq!(recover(&journal, &allowed).unwrap(), Some(backup.clone()));
+        assert_eq!(fs::read(&old).unwrap(), b"original");
+        assert!(!new.exists());
+        assert!(!journal.exists());
+        assert!(backup.exists(), "the private backup is retained");
+    }
+    #[test]
+    fn recovery_refuses_backups_naming_other_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let (target, other) = (temp.path().join("settings.json"), temp.path().join("other"));
+        let (backup, journal) = (temp.path().join("backup.json"), temp.path().join("journal.json"));
+        fs::write(&other, b"untouched").unwrap();
+        begin(&[(other.clone(), vec![])], &backup, &journal).unwrap();
+        fs::write(&other, b"changed").unwrap();
+        let error = recover(&journal, &[target]).unwrap_err();
+        assert!(error.contains("unexpected files") && error.contains("manually"));
+        assert_eq!(fs::read(&other).unwrap(), b"changed");
+        assert!(journal.exists(), "unrecovered imports stay visible");
+    }
+    #[test]
+    fn merge_keeps_local_definitions_and_adds_new_ones() {
+        use crate::operations::{Recipe, Tool};
+        let step = crate::operations::Step {
+            name: "Fetch".into(),
+            request: crate::integrations::Request { action: "fetch".into(), ..Default::default() },
+            satisfied_path: String::new(),
+        };
+        let recipe = |id: &str, name: &str| Recipe {
+            id: id.into(),
+            name: name.into(),
+            steps: vec![step.clone()],
+            ..Default::default()
+        };
+        let mut current = Current::default();
+        current.settings.setup_completed = true;
+        current.settings.theme = "light".into();
+        current.settings.roots = vec!["/home/new/code".into()];
+        current.settings.integrations.dotfiles_path = "/home/new/local-dotfiles".into();
+        current.settings.integrations.backup_health_script = "/home/new/health".into();
+        current.operations.workflows = vec![recipe("shared", "Local"), recipe("same", "Same")];
+        current.workspace.insert("/home/new/code/app".into(), Default::default());
+        current.favorites = vec!["local-tool".into()];
+        let mut b = bundle();
+        b.settings.theme = "dark".into();
+        b.settings.roots = vec!["/home/old/code".into(), "/home/old/other".into()];
+        b.settings.integrations.dotfiles_path = "/home/old/dotfiles".into();
+        b.settings.integrations.backup_script = "/home/old/backup".into();
+        b.settings.integrations.backup_health_script = "/home/old/health".into();
+        b.operations.workflows = vec![recipe("shared", "Incoming"), recipe("same", "Same"), recipe("new", "New")];
+        b.operations.tools = vec![Tool { id: "tool".into(), name: "Tool".into(), command: "true".into(), directory: "~/code".into(), mode: "background".into(), ..Default::default() }];
+        let project = crate::workspace::Project { group: "Incoming".into(), ..Default::default() };
+        b.workspace.insert("/home/old/code/app".into(), project.clone());
+        b.workspace.insert("/home/old/code/lib".into(), project);
+        b.toolbox_favorites = vec!["local-tool".into(), "tool".into()];
+        let (merged, kept) = prepare(&serde_json::to_string(&b).unwrap(), "/home/new", &current, Mode::Merge).unwrap();
+        let s = &merged.settings;
+        assert!(s.setup_completed && s.theme == "light", "local preferences stay");
+        assert_eq!(s.roots, vec!["/home/new/code", "/home/new/other"]);
+        assert_eq!(s.integrations.dotfiles_path, "/home/new/local-dotfiles");
+        assert_eq!(s.integrations.backup_script, "/home/new/backup", "empty paths are filled");
+        assert_eq!(s.integrations.backup_health_script, "/home/new/health");
+        let names: Vec<_> = merged.operations.workflows.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, vec!["Local", "Same", "New"]);
+        assert_eq!(merged.operations.tools.len(), 1);
+        assert_eq!(merged.workspace["/home/new/code/app"].group, "");
+        assert_eq!(merged.workspace["/home/new/code/lib"].group, "Incoming");
+        assert_eq!(merged.toolbox_favorites, vec!["local-tool", "tool"]);
+        assert_eq!(kept, vec!["Workflow “Incoming”", "Workspace profile /home/new/code/app"]);
+        current.operations.workflows = (0..30).map(|i| recipe(&format!("w{i}"), "W")).collect();
+        assert!(prepare(&serde_json::to_string(&b).unwrap(), "/home/new", &current, Mode::Merge).is_err());
     }
 }

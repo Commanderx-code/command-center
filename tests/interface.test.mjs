@@ -12,7 +12,7 @@ const bundle = await build({
   write: false,
 });
 const code = bundle.outputFiles[0].text;
-async function setup(overrides = {}) {
+async function setup(overrides = {}, { storage = {} } = {}) {
   const calls = [];
   const prefs = normalize({
     integrations: { dotfilesPath: "/fixture/dotfiles" },
@@ -89,6 +89,7 @@ async function setup(overrides = {}) {
     this.open = false;
   };
   w.structuredClone = structuredClone;
+  for (const [key, value] of Object.entries(storage)) w.localStorage.setItem(key, value);
   w.__TAURI__ = {
     core: {
       invoke: async (command, args) => {
@@ -296,11 +297,11 @@ test("Toolbox filters unavailable actions, persists favorites and reviews the ca
       /Installation.*File changes.*Package manager/,
     );
     x.$("#toolbox-favorite").click();
-    assert.equal(
-      JSON.parse(
-        x.w.localStorage.getItem("command-center.toolbox-favorites"),
-      )[0],
-      toolboxCatalog.actions[0].id,
+    await settle();
+    assert.deepEqual(
+      [...x.calls.findLast((c) => c.command === "save_toolbox_favorites").args
+        .favorites],
+      [toolboxCatalog.actions[0].id],
     );
     x.$("#toolbox-available").click();
     x.$('[data-depth="0"]').click();
@@ -757,7 +758,7 @@ test('setup wizard detects into a draft, checks it, and saves only after final r
 
 const setupBundle=()=>({format:'command-center-setup',version:1,sourceHome:'/home/old',settings:normalize(),operations:{workflows:[],profiles:[],tools:[],notifications:{}},workspace:{},repositories:['/home/new/repo'],toolboxFavorites:['tool']});
 test('bundle import needs preview and explicit replacement choice; changed paths invalidate consent',async()=>{
-  const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:setupBundle()});
+  const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:{bundle:setupBundle(),kept:[]}});
   try{
     const input=x.$('#bundle-file');Object.defineProperty(input,'files',{value:[{size:100,text:async()=>JSON.stringify(setupBundle())}],configurable:true});
     input.dispatchEvent(new x.w.Event('change'));await settle();
@@ -772,8 +773,34 @@ test('bundle preview arriving after a home edit cannot enable an unreviewed impo
   const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:()=>pending});
   try{
     const input=x.$('#bundle-file');Object.defineProperty(input,'files',{value:[{size:100,text:async()=>JSON.stringify(setupBundle())}]});input.dispatchEvent(new x.w.Event('change'));await settle();
-    x.$('#bundle-home').value='/home/changed';x.$('#bundle-home').dispatchEvent(new x.w.Event('input'));resolve(setupBundle());await settle();
+    x.$('#bundle-home').value='/home/changed';x.$('#bundle-home').dispatchEvent(new x.w.Event('input'));resolve({bundle:setupBundle(),kept:[]});await settle();
     assert.equal(x.$('#bundle-content').textContent,'');assert.equal(x.$('#bundle-apply').disabled,true);
+  }finally{x.dom.window.close();}
+});
+test('bundle import merges by default, reports kept items, and imports the reviewed mode',async()=>{
+  const x=await setup({setup_environment:{home:'/home/new'},preview_setup_bundle:({mode})=>({bundle:{...setupBundle(),sourceHome:mode},kept:mode==='merge'?['Workflow “Nightly”']:[]}),import_setup_bundle:{token:'t',backup:'/backup.json'}});
+  try{
+    const input=x.$('#bundle-file');Object.defineProperty(input,'files',{value:[{size:100,text:async()=>JSON.stringify(setupBundle())}]});input.dispatchEvent(new x.w.Event('change'));await settle();
+    assert.equal(x.calls.findLast(c=>c.command==='preview_setup_bundle').args.mode,'merge');
+    assert.match(x.$('#bundle-kept').textContent,/kept unchanged \(1\): Workflow “Nightly”/);
+    assert.match(x.$('#bundle-consent-text').textContent,/Add this preview/);
+    const replace=x.$('input[name="bundle-mode"][value="replace"]');replace.checked=true;replace.dispatchEvent(new x.w.Event('change'));await settle();
+    assert.equal(x.calls.findLast(c=>c.command==='preview_setup_bundle').args.mode,'replace');
+    assert.equal(x.$('#bundle-kept').textContent,'');assert.match(x.$('#bundle-consent-text').textContent,/^Replace/);
+    x.$('#bundle-consent').checked=true;x.$('#bundle-consent').dispatchEvent(new x.w.Event('change'));x.$('#bundle-apply').click();await settle();
+    const call=x.calls.find(c=>c.command==='import_setup_bundle');assert.equal(call.args.mode,'replace');assert.equal(call.args.expected.sourceHome,'replace');
+  }finally{x.dom.window.close();}
+});
+test('an interrupted import restored at launch is reported to the user',async()=>{
+  const x=await setup({setup_import_state:{recovery:{restored:'/data/setup-backups/before-import-1.json'}}});
+  try{assert.match(x.$('#bundle-status').textContent,/rolled back.*before-import-1\.json/);}finally{x.dom.window.close();}
+});
+test('webview Toolbox favorites migrate once to app data',async()=>{
+  const x=await setup({toolbox_catalog:toolboxCatalog,load_toolbox_favorites:null},{storage:{'command-center.toolbox-favorites':'["legacy"]'}});
+  try{
+    x.$('[data-view="toolbox"]').click();await settle();
+    assert.deepEqual([...x.calls.find(c=>c.command==='save_toolbox_favorites').args.favorites],['legacy']);
+    assert.equal(x.w.localStorage.getItem('command-center.toolbox-favorites'),null);
   }finally{x.dom.window.close();}
 });
 test('bundle export requires review and uses a separate format from settings exports',async()=>{

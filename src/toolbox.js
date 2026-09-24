@@ -16,15 +16,25 @@ export function createToolbox(api) {
     folder = [],
     favoritesOnly = false,
     jobs = [];
+  const FAVORITES_KEY = "command-center.toolbox-favorites";
   let favorites = [];
   try {
-    const saved = JSON.parse(
-      localStorage.getItem("command-center.toolbox-favorites") || "[]",
-    );
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
     if (Array.isArray(saved))
       favorites = saved.filter((id) => typeof id === "string");
   } catch {
     /* recover malformed local preferences */
+  }
+  // The desktop app keeps favorites in app data; the browser preview uses webview storage.
+  async function loadFavorites() {
+    const saved = await run("load_toolbox_favorites");
+    if (saved == null) await run("save_toolbox_favorites", { favorites });
+    else favorites = saved;
+    localStorage.removeItem(FAVORITES_KEY);
+  }
+  async function saveFavorites() {
+    if (state.desktop) await run("save_toolbox_favorites", { favorites });
+    else localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   }
   $(".main-nav").insertAdjacentHTML(
     "beforeend",
@@ -167,15 +177,19 @@ export function createToolbox(api) {
     $("#toolbox-reveal")?.addEventListener("click", () => reveal(tool));
     $("#toolbox-favorite").addEventListener(
       "click",
-      guard(() => {
+      guard(async () => {
+        const previous = favorites;
         favorites = favorites.includes(tool.id)
           ? favorites.filter((id) => id !== tool.id)
           : [...favorites, tool.id];
-        localStorage.setItem(
-          "command-center.toolbox-favorites",
-          JSON.stringify(favorites),
-        );
-        render();
+        try {
+          await saveFavorites();
+        } catch (error) {
+          favorites = previous;
+          throw error;
+        } finally {
+          render();
+        }
       }),
     );
     $("#toolbox-run").addEventListener(
@@ -201,6 +215,7 @@ export function createToolbox(api) {
           "Open the installed desktop app to load all 215 tools and check your machine. Browser preview cannot run installers.";
         return;
       }
+      await loadFavorites();
       const result = await run("toolbox_catalog");
       if (!Array.isArray(result?.actions))
         throw new Error("Toolbox returned an invalid catalog");
