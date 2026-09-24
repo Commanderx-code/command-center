@@ -32,7 +32,14 @@ jobs:
         with:
           components: clippy
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev
+        run: |
+          # Mirrors can briefly 404 a package just replaced by an update; refresh and retry.
+          for attempt in 1 2 3; do
+            sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev && exit 0
+            echo "apt attempt $attempt failed; retrying in 30 seconds" >&2
+            sleep 30
+          done
+          exit 1
       - name: Install checksum-pinned Restic for restore integration tests
         run: |
           curl -fsSL https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2 -o /tmp/restic-ci.bz2
@@ -54,7 +61,14 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Install build tools
-        run: apt-get update && apt-get install -y curl ca-certificates git build-essential pkg-config file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf python3 binutils libarchive-tools
+        run: |
+          # Mirrors can briefly 404 a package just replaced by an update; refresh and retry.
+          for attempt in 1 2 3; do
+            apt-get update && apt-get install -y curl ca-certificates git build-essential pkg-config file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf python3 binutils libarchive-tools && exit 0
+            echo "apt attempt $attempt failed; retrying in 30 seconds" >&2
+            sleep 30
+          done
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -90,7 +104,14 @@ jobs:
       - name: Verify checksums
         run: cd packages && sha256sum --check SHA256SUMS
       - name: Install package and launch-test tools
-        run: apt-get update && apt-get install -y ./packages/*.deb xvfb xauth dbus dbus-x11 libnotify-bin
+        run: |
+          # Mirrors can briefly 404 a package just replaced by an update; refresh and retry.
+          for attempt in 1 2 3; do
+            apt-get update && apt-get install -y ./packages/*.deb xvfb xauth dbus dbus-x11 libnotify-bin && exit 0
+            echo "apt attempt $attempt failed; retrying in 30 seconds" >&2
+            sleep 30
+          done
+          exit 1
       - name: Launch installed application as a normal user
         run: useradd -m smoke && runuser -u smoke -- bash scripts/smoke-desktop.sh /usr/bin/command-center
 
