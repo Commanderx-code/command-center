@@ -154,7 +154,7 @@ pub fn run(
     plan: &Plan,
     id: &str,
 ) -> (String, Option<i32>, String) {
-    match execute(terminals, plan, id, || crate::jobs::cancelled(jobs)) {
+    match execute(terminals, plan, id, || crate::jobs::cancelled(jobs, id)) {
         Ok((status, code)) => (
             status,
             Some(code),

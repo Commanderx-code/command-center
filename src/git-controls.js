@@ -14,7 +14,8 @@ export function mountGitControls({ target, data, path, desktop, escapeHtml: e, a
     <p id="git-change-status" role="status">${desktop ? 'Commit saves locally. Use Push afterwards to publish.' : 'Browser preview · Staging and commits require the desktop app.'}</p><pre id="git-inline-output" class="output compact-output" hidden></pre><button type="button" class="text-button" id="git-open-activity">View Activity</button></section>`;
   const $ = selector => target.querySelector(selector);
   let busy = false;
-  let running = jobs.some(job => job.status === 'running');
+  const busyHere = list => list.some(job => job.status === 'running' && job.cwd === path);
+  let running = busyHere(jobs);
   let recent = jobs.find(job => job.cwd === path);
   const status = $('#git-change-status');
   if (recent) {
@@ -57,7 +58,7 @@ export function mountGitControls({ target, data, path, desktop, escapeHtml: e, a
   $('#commit-form').addEventListener('submit', event => { event.preventDefault(); if (!$('#commit-staged').disabled) void perform('commit'); });
   update();
   return { updateJobs(next) {
-    running = next.some(job => job.status === 'running');
+    running = busyHere(next);
     recent = next.find(job => job.cwd === path);
     update();
   } };

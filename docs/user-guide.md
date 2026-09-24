@@ -9,7 +9,7 @@
 
 - **Repositories:** scan configurable roots, inspect branches and local changes, search/filter/sort, favorites, groups, changed-file lists, recent commits, and editor/terminal/remote launchers. Fetch updates remote-tracking information; pull requires a clean tracked branch and uses fast-forward only; push targets that branch's upstream without force or automatic tags.
 - **Launch profiles:** save a documentation URL and choose whether a project opens its editor, terminal, and documentation together.
-- **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Only one operation runs at a time. Background output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
+- **Activity:** preview each command before starting, stream output, stop background jobs, and inspect the last 100 results across app restarts. Operations that use different resources can run at the same time (see [Running several jobs](#running-several-jobs)). Background output is capped at 2 MB per job, and truncation is explicit. Failed jobs can be marked reviewed.
 - **System Sync:** inspect dotfiles changes, compare Ghostty/Fastfetch sources with their live files, view Home Manager generations, fetch/pull the config repository, build, and apply Home Manager.
 - **Backup & Restore:** run your personal backup helper, run the full recovery helper in a terminal for encryption prompts, load recent Restic snapshots, browse directories, check repository metadata, and restore a snapshot or selected path/pattern into a new folder beneath your home directory.
 - **Configuration:** Ghostty font, theme, padding, opacity, and cursor controls; Fastfetch logo/separator controls and module add/remove/reordering. Both include a source editor and illustrative preview. Ghostty uses its installed validator. Fastfetch validates JSONC syntax and module structure; it does not execute command modules or claim full runtime/schema validation.
@@ -43,6 +43,10 @@ Future catalog updates require updating the pinned revision in `src-tauri/Cargo.
 Every operation displays its exact command and working directory for review. Repository Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
 
 Background jobs show output and a recorded exit status. Full recovery backups use a terminal and write a completion receipt back to the app; terminal input/output is not captured. If the terminal closes without a receipt, use **Terminal closed? Stop monitoring** only after checking that the workflow has stopped. Closing the app normally is blocked while a job is running. After a crash, previously running jobs are marked interrupted; inspect the command before retrying.
+
+### Running several jobs
+
+Repository actions (fetch, pull, push, staging, commits, branches, stashes) and project tasks run alongside each other when they use different repositories. Everything else, including Toolbox installers, backups and restores, Home Manager, updates, workflows, personal tools, and quick actions, is a workstation task: one runs at a time, but it can run alongside repository jobs in other folders. Two jobs never run in the same working directory at once, and the embedded terminal holds one interactive session. External-terminal jobs do not use the embedded terminal. A job that has to wait says which running job it is waiting for. Each job is stopped individually from Activity; the tray shows how many are running.
 
 Restore destinations must be nonexistent directories beneath your home with an existing parent. Restore uses `--overwrite never` and `--verify`. Include fields accept Restic patterns; leaving them blank restores the whole snapshot. This is file recovery into a staging folder, not automatic OS replacement or a bootable disk-image restore.
 

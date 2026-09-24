@@ -803,6 +803,17 @@ test('webview Toolbox favorites migrate once to app data',async()=>{
     assert.equal(x.w.localStorage.getItem('command-center.toolbox-favorites'),null);
   }finally{x.dom.window.close();}
 });
+test('a running job only locks repository actions in its own repository',async()=>{
+  const running=cwd=>({jobs:[{id:'j',action:'project-task',title:'Build',status:'running',cwd,startedAt:Date.now(),output:''}]});
+  const x=await setup({job_history:running('/other/repo')});
+  try{
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    assert.equal(x.$('[data-repo-job="fetch"]').disabled,false);
+    x.responses.job_history=running('/fixture/repo');x.$('[data-view="activity"]').click();x.$('[data-job-id="j"]').click();await settle();
+    x.$('[data-view="repositories"]').click();x.$('[data-details]').click();await settle();
+    assert.equal(x.$('[data-repo-job="fetch"]').disabled,true);
+  }finally{x.dom.window.close();}
+});
 test('bundle export requires review and uses a separate format from settings exports',async()=>{
   const x=await setup({create_setup_bundle:setupBundle(),export_setup_bundle:'/downloads/setup.json'});
   try{

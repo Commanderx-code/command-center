@@ -521,6 +521,8 @@ export function createFeatures(api) {
     if (!commitDrafts.has(path)) commitDrafts.set(path, { message: "" });
     gitControls = mountGitControls({ target: $("#git-controls"), data, path, desktop: state.desktop,
       escapeHtml: e, action, refresh: () => showRepository(path), toast, draft: commitDrafts.get(path), invoke, jobs, openActivity: (id) => { selectedJob = id; $("#repo-detail-dialog").close(); switchView("activity"); } });
+    const repoBusy = () => jobs.some((job) => job.status === "running" && job.cwd === path);
+    $$("#repo-details [data-repo-job]").forEach((btn) => { btn.disabled = repoBusy(); });
     $$("#repo-details [data-repo-job]").forEach((btn) =>
       btn.addEventListener(
         "click",
@@ -531,7 +533,7 @@ export function createFeatures(api) {
             if (id && $("#git-change-status")) $("#git-change-status").textContent = `${btn.textContent} running… View Activity for live output.`;
           } catch (error) {
             if ($("#git-change-status")) $("#git-change-status").textContent = `Could not start: ${error.message || error}`;
-          } finally { btn.disabled = false; }
+          } finally { btn.disabled = repoBusy(); }
         }),
       ),
     );
@@ -564,7 +566,7 @@ export function createFeatures(api) {
       jobs = history.jobs;
       operations.updateJobs(jobs);
       gitControls?.updateJobs(jobs);
-      $$("#repo-details [data-repo-job]").forEach(button => { button.disabled = jobs.some(job => job.status === "running"); });
+      $$("#repo-details [data-repo-job]").forEach(button => { button.disabled = jobs.some(job => job.status === "running" && job.cwd === selectedRepo); });
       if (history.closeRequested) {
         switchView("activity");
         toast(
