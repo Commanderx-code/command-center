@@ -193,9 +193,14 @@ pub fn restic_args(i: &Integrations) -> Result<Vec<String>, String> {
     if i.restic_repository.is_empty() {
         return Err("Configure the Restic repository in Settings".into());
     }
-    if let Ok(url) = tauri::Url::parse(&i.restic_repository) {
-        if url.password().is_some() {
-            return Err("Use Restic's credential environment or password file instead of a password embedded in the repository URL".into());
+    // Restic's REST backend nests the server URL (and any credentials) behind a
+    // `rest:` prefix, which URL parsing alone treats as an opaque path.
+    let nested = i.restic_repository.strip_prefix("rest:");
+    for address in std::iter::once(i.restic_repository.as_str()).chain(nested) {
+        if let Ok(url) = tauri::Url::parse(address) {
+            if url.password().is_some() {
+                return Err("Use Restic's credential environment or password file instead of a password embedded in the repository URL".into());
+            }
         }
     }
     let repository = if i.restic_repository.starts_with("~/") {
@@ -520,6 +525,24 @@ mod tests {
         assert_eq!(plan.args[3], "$(touch x); *.kdbx");
         assert_eq!(plan.args[4], "0");
         assert_eq!(&plan.args[5..7], ["--repo", "/backup/repo"]);
+    }
+    #[test]
+    fn rejects_passwords_embedded_in_repository_addresses() {
+        let password = tempfile::NamedTempFile::new().unwrap();
+        let mut i = Settings::default().integrations;
+        i.restic_password_file = password.path().to_string_lossy().into_owned();
+        for repository in [
+            "https://backup:S3cret@nas:8000/laptop",
+            "rest:https://backup:S3cret@nas:8000/laptop",
+            "rest:http://backup:S3cret@nas:8000/",
+            "rest://backup:S3cret@nas:8000/",
+        ] {
+            i.restic_repository = repository.into();
+            let err = restic_args(&i).unwrap_err();
+            assert!(err.contains("embedded in the repository URL"), "{repository}: {err}");
+        }
+        i.restic_repository = "rest:https://nas:8000/laptop".into();
+        assert_eq!(&restic_args(&i).unwrap()[..2], ["--repo", "rest:https://nas:8000/laptop"]);
     }
     #[test]
     fn rejects_option_like_snapshot_ids() {

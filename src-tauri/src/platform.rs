@@ -224,6 +224,11 @@ pub fn git(path: &Path, args: &[&str]) -> Result<String, String> {
             command.arg("-c").arg(format!("filter.{name}.{setting}"));
         }
     }
+    // Leading global options (e.g. --literal-pathspecs) precede the subcommand;
+    // the guards below must apply to the subcommand Git actually runs.
+    let globals = args.iter().take_while(|arg| arg.starts_with("--")).count();
+    let (global_args, args) = args.split_at(globals);
+    command.args(global_args);
     if let Some((subcommand, rest)) = args.split_first() {
         command.arg(subcommand);
         // A nested worktree has its own filters. Report gitlink changes without

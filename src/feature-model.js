@@ -1,9 +1,29 @@
 export function backupRecordFailed(record) {
   return record?.success===false || (typeof record?.exit_code==='number'&&record.exit_code!==0) || ['failed','failure','error','canceled','cancelled'].includes(String(record?.status||'').toLowerCase());
 }
+// Strips OSC sequences exactly as /\x1b\][^\x07]*(?:\x07|\x1b\\)/g did: each ends at the
+// first BEL after it, otherwise at the last ST. A scan keeps unterminated floods from
+// remote job output linear where that regex backtracked quadratically.
+function stripOsc(value) {
+  let out = "", pos = 0;
+  for (;;) {
+    const start = value.indexOf("\x1b]", pos);
+    if (start < 0) break;
+    const bel = value.indexOf("\x07", start + 2);
+    let end;
+    if (bel >= 0) end = bel + 1;
+    else {
+      const st = value.lastIndexOf("\x1b\\");
+      if (st < start + 2) break;
+      end = st + 2;
+    }
+    out += value.slice(pos, start);
+    pos = end;
+  }
+  return out + value.slice(pos);
+}
 export function cleanOutput(value = "") {
-  return value
-    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+  return stripOsc(value)
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
     .replace(/\r(?!\n)/g, "\n");
 }

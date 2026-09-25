@@ -267,6 +267,35 @@ mod tests {
         assert!(diff_file(path, "new", false).unwrap()["text"].as_str().unwrap().contains("+new content"));
         assert!(diff_file(path, "../outside", false).is_err());
     }
+    #[test]
+    fn file_diffs_skip_nested_submodule_filters() {
+        use std::os::unix::fs::PermissionsExt;
+        let raw = |dir: &Path, args: &[&str]| {
+            let output = Command::new("git").arg("-C").arg(dir).args(args).output().unwrap();
+            assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        };
+        let dir = fixture(); let path = dir.path();
+        let child = path.join("child");
+        fs::create_dir(&child).unwrap();
+        raw(&child, &["init"]);
+        fs::write(child.join("tracked"), "original\n").unwrap();
+        raw(&child, &["add", "tracked"]);
+        raw(&child, &["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "initial"]);
+        raw(path, &["add", "child"]);
+        let hook = child.join("filter-hook");
+        fs::write(&hook, "#!/bin/sh\ntouch nested-filter-ran\ncat\n").unwrap();
+        fs::set_permissions(&hook, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::write(child.join(".gitattributes"), "tracked filter=nested\n").unwrap();
+        raw(&child, &["config", "filter.nested.clean", hook.to_str().unwrap()]);
+        fs::write(child.join("tracked"), "modified\n").unwrap();
+        // Positive attack control: ordinary Git recurses into the submodule.
+        raw(path, &["--literal-pathspecs", "diff", "--no-ext-diff", "--no-textconv", "--", "child"]);
+        assert!(child.join("nested-filter-ran").exists(), "nested filter fixture did not execute");
+        fs::remove_file(child.join("nested-filter-ran")).unwrap();
+        diff_file(path, "child", false).unwrap();
+        diff_file(path, "child", true).unwrap();
+        assert!(!child.join("nested-filter-ran").exists(), "nested filter executed during file diff");
+    }
 
     #[test]
     fn stash_apply_retains_stash_and_publish_sets_upstream() {
