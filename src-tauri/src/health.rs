@@ -127,11 +127,25 @@ pub async fn system_health(app: tauri::AppHandle) -> Result<Value, String> {
 pub fn recovery_notes(app: tauri::AppHandle) -> Result<String, String> {
     let s = crate::settings::load_settings(app)?.unwrap_or_default();
     let path = p::expand(&s.integrations.recovery_notes_path)?;
-    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    if text.len() > 256_000 {
+    read_recovery_notes(&path)
+}
+fn read_recovery_notes(path: &std::path::Path) -> Result<String, String> {
+    use std::io::Read;
+    // Stat before opening so devices, FIFOs and sockets are refused without blocking or
+    // streaming forever; the bounded read below caps memory even if the path is swapped.
+    if !fs::metadata(path).map_err(|e| e.to_string())?.is_file() {
+        return Err("Recovery notes must be a regular file".into());
+    }
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .map_err(|e| e.to_string())?
+        .take(256_001)
+        .read_to_end(&mut bytes)
+        .map_err(|e| e.to_string())?;
+    if bytes.len() > 256_000 {
         return Err("Recovery notes exceed 256 KB; open them in your editor".into());
     }
-    Ok(text)
+    std::io::read_to_string(bytes.as_slice()).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -163,5 +177,19 @@ mod readiness_tests {
         let plan=crate::integrations::build_plan(&request,&settings).unwrap();
         assert_eq!(&plan.args[plan.args.len()-2..],&["cat","config"]);
         assert_eq!(plan.timeout_seconds,120);
+    }
+    #[test]
+    fn recovery_notes_refuse_devices_and_bound_oversized_files(){
+        assert_eq!(read_recovery_notes(std::path::Path::new("/dev/zero")).unwrap_err(),"Recovery notes must be a regular file");
+        let temp=tempfile::tempdir().unwrap();
+        let notes=temp.path().join("notes.md");
+        fs::write(&notes,"Restore steps\n").unwrap();
+        assert_eq!(read_recovery_notes(&notes).unwrap(),"Restore steps\n");
+        fs::write(&notes,"x".repeat(256_000)).unwrap();
+        assert_eq!(read_recovery_notes(&notes).unwrap().len(),256_000);
+        fs::write(&notes,format!("{}é","x".repeat(255_999))).unwrap();
+        assert_eq!(read_recovery_notes(&notes).unwrap_err(),"Recovery notes exceed 256 KB; open them in your editor");
+        fs::write(&notes,[b'a',0xff]).unwrap();
+        assert_eq!(read_recovery_notes(&notes).unwrap_err(),"stream did not contain valid UTF-8");
     }
 }
