@@ -2,6 +2,16 @@
 
 Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
 
+## [0.7.1](https://github.com/Commanderx-code/command-center/releases/tag/v0.7.1) — 2026-09-25
+
+Security release. All 0.7.0 users should upgrade.
+
+- Per-file diffs in Repository Details no longer inspect nested submodule working files, so a submodule's own Git filters cannot run when you view its diff. The file list and full diff already worked this way.
+- **Read recovery notes** refuses devices, FIFOs and other non-regular files and reads at most 256 KB, so a setting such as `/dev/zero` can no longer exhaust memory.
+- `settings.json` and its `.bak` backup are written readable only by you (0600), like the app's other private data. Existing files are tightened the next time settings are saved.
+- Restic `rest:` repository addresses with an embedded password are refused, as other URLs with passwords already were, instead of passing the password on restic's command line.
+- Job output from a hostile Git server can no longer freeze the app. Escape-sequence cleaning is now linear; displayed output is unchanged.
+
 ## [0.7.0](https://github.com/Commanderx-code/command-center/releases/tag/v0.7.0) — 2026-09-24
 
 - Added **Backup file history**: search every Restic snapshot for a file name, path or pattern, see each saved copy with its snapshot time, size and modification time, spot the versions that changed or a file that was deleted, and restore a chosen version into a new folder.

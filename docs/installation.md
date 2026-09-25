@@ -19,19 +19,19 @@ Each downloaded package must report `OK`. The `--ignore-missing` option lets you
 On a compatible Debian/Ubuntu system:
 
 ```bash
-sudo apt install ./command-center_0.7.0_amd64.deb
+sudo apt install ./command-center_0.7.1_amd64.deb
 ```
 
 On a compatible Fedora/RPM system:
 
 ```bash
-sudo dnf install ./command-center-0.7.0-1.x86_64.rpm
+sudo dnf install ./command-center-0.7.1-1.x86_64.rpm
 ```
 
 On Arch or an Arch-based system such as Garuda (0.6.0 and later):
 
 ```bash
-sudo pacman -U ./command-center-0.7.0-1-x86_64.pkg.tar.zst
+sudo pacman -U ./command-center-0.7.1-1-x86_64.pkg.tar.zst
 ```
 
 The Arch package is built from the release tag with `packaging/aur/PKGBUILD` in a clean Arch container and tracks current Arch libraries; update your system before installing it. To build it yourself instead, run `makepkg -si` from a copy of `packaging/aur/`.

@@ -5,7 +5,7 @@
 Open Settings → About & updates. Check for releases, read the notes, then export the source updater. Close Command Center and run the displayed command, for example:
 
 ```sh
-bash ~/Downloads/update-desktop.sh v0.7.0
+bash ~/Downloads/update-desktop.sh v0.7.1
 ```
 
 The helper requires Linux build dependencies, Git, Node/npm, and Rust/Cargo. Run as your normal user, without sudo. It asks you to type the tag, downloads that tag into a temporary checkout, checks its package version, installs dependencies, runs JavaScript and Rust tests, then builds and installs the desktop app. A failed check stops installation. It does not modify your project checkout or app settings. The GitHub tag must already exist; the release checker only advertises published stable releases. Offline/API errors are shown without claiming that the installed version is current. GitHub is contacted only when you request a release check or open its release page.
@@ -25,9 +25,9 @@ This rolls back the binary only, not settings or user data. It applies to the no
 Keep package.json, package-lock.json, Cargo.toml, Cargo.lock, and tauri.conf.json versions aligned. Update docs/release-notes.md and CHANGELOG.md. Commit and push the reviewed source, then create and push an annotated tag matching the version:
 
 ```sh
-git tag -a v0.7.0 -m 'Command Center v0.7.0'
-git push origin v0.7.0
-npm run release:draft -- v0.7.0
+git tag -a v0.7.1 -m 'Command Center v0.7.1'
+git push origin v0.7.1
+npm run release:draft -- v0.7.1
 ```
 
 The draft command requires an authenticated GitHub CLI (`gh`). It checks for a clean working tree and a matching local/remote tag and runs the checks and tests. It then finds the successful **Linux packages** run for the tagged commit, downloads that run's `packages` and `arch-package` artifacts, verifies their checksums, writes one `SHA256SUMS` covering the `.deb`, `.rpm`, and Arch package, and creates an **unpublished** GitHub release. The release notes are docs/release-notes.md plus a build-and-validation section linking the workflow run. If CI has not passed for the tag, no draft is created. The command never builds release packages locally: a build on a newer distribution such as Garuda would require a newer glibc than the packages declare. It does not push tags or publish the draft. Download and verify the hosted assets and test the app on your machine before publishing.
