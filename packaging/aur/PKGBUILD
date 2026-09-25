@@ -2,7 +2,7 @@
 # namcap, installs it, and launches it. Not yet submitted to AUR.
 # libappindicator-gtk3 is loaded at runtime for the tray, so namcap cannot see it.
 pkgname=command-center
-pkgver=0.7.0
+pkgver=0.7.1
 pkgrel=1
 pkgdesc='Local Linux workstation dashboard for repositories, backups, configuration and Toolbox'
 arch=('x86_64')
