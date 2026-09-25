@@ -35,6 +35,8 @@ The JavaScript suite covers preference migration, project filters, configuration
 
 Rust tests exercise temporary Git remotes, fast-forward and divergence behavior, process cancellation and timeouts, Unicode output, private atomic persistence, setup remapping/redaction/import rollback, read-only project task detection, configuration backups and conflicts, catalog completeness, compatibility rejection, and PTY input, resizing, and cancellation. Restic integration tests use a temporary encrypted repository when Restic is installed.
 
+The **Security audit** workflow runs `cargo audit --file src-tauri/Cargo.lock` and `npm audit` on every pull request, every push to main, and weekly, so new advisories against unchanged dependencies are caught too. Run them locally before changing dependencies (`cargo install cargo-audit --locked` once). A known vulnerability fails the check; RustSec "unmaintained" and "unsound" notices are warnings.
+
 Tests do not push real repositories, run personal backups, activate Home Manager, or execute real Toolbox installers. UI changes should also be checked visually in the browser preview and, for native behavior, in the desktop app.
 
 ## Updating Commander Toolbox
