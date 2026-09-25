@@ -1,0 +1,35 @@
+version: 2
+# Weekly, grouped version updates. Security updates are enabled in the repository settings
+# and arrive as their own pull requests whenever an advisory matches a locked dependency.
+updates:
+  # Actions are pinned to commit SHAs; Dependabot moves the pins and their version comments.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The Toolbox revision must also match REVISION in src-tauri/src/toolbox.rs; update both with
+      # scripts/pin-toolbox.mjs after reviewing the Toolbox commit.
+      - dependency-name: linutil_core
