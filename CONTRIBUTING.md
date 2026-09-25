@@ -6,6 +6,8 @@ Thanks for helping improve Command Center. Small fixes, documentation improvemen
 
 Check [existing issues](https://github.com/Commanderx-code/command-center/issues) first, then use the bug report or feature request template. For bugs, include the app version, distribution, installation method, steps to reproduce, and expected versus actual behavior. Mention whether the problem occurs in the desktop app or browser preview.
 
+**Security vulnerabilities:** don't open a public issue. Report them privately as described in [SECURITY.md](SECURITY.md).
+
 Remove secrets and personal information from screenshots and logs. Terminal transcripts and configuration files can contain credentials; include only the relevant, redacted excerpt.
 
 ## Work on a change
