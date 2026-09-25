@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use tauri::Manager;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -216,16 +219,19 @@ pub fn load_settings(app: tauri::AppHandle) -> Result<Option<Settings>, String> 
 pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
     let _setup_guard = crate::setup::WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     settings.validate()?;
-    let path = location(&app)?;
+    write_settings(&location(&app)?, &settings)
+}
+// Settings can hold repository credentials, so the file and its backup are
+// written privately (0600) regardless of umask or the previous file's mode.
+fn write_settings(path: &Path, settings: &Settings) -> Result<(), String> {
     fs::create_dir_all(path.parent().ok_or("Invalid settings path")?).map_err(|e| e.to_string())?;
-    let data = serde_json::to_vec_pretty(&settings).map_err(|e| e.to_string())?;
-    // Preserve previous contents; rename in the same directory for atomic replacement on Linux.
+    let data = serde_json::to_vec_pretty(settings).map_err(|e| e.to_string())?;
+    // Preserve previous contents; atomic_write renames in the same directory for atomic replacement on Linux.
     if path.exists() {
-        fs::copy(&path, path.with_extension("json.bak")).map_err(|e| e.to_string())?;
+        let previous = fs::read(path).map_err(|e| e.to_string())?;
+        crate::platform::atomic_write(&path.with_extension("json.bak"), &previous)?;
     }
-    let temporary = path.with_extension("json.tmp");
-    fs::write(&temporary, data).map_err(|e| e.to_string())?;
-    fs::rename(&temporary, &path).map_err(|e| e.to_string())
+    crate::platform::atomic_write(path, &data)
 }
 
 #[cfg(test)]
@@ -266,6 +272,33 @@ mod tests {
         assert!(settings.validate().is_err());
         settings.roots.clear();
         assert!(settings.validate().is_ok());
+    }
+    #[test]
+    fn saved_settings_and_backup_are_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("settings.json");
+        let backup = path.with_extension("json.bak");
+        // Files left by earlier versions were created with umask-default modes.
+        for file in [&path, &backup] {
+            fs::write(file, "{}").unwrap();
+            fs::set_permissions(file, fs::Permissions::from_mode(0o644)).unwrap();
+        }
+        let mut settings = Settings::default();
+        settings.integrations.restic_repository = "rest:https://user:secret@example.invalid/repo".into();
+        write_settings(&path, &settings).unwrap();
+        for file in [&path, &backup] {
+            assert_eq!(fs::metadata(file).unwrap().permissions().mode() & 0o777, 0o600);
+        }
+        assert_eq!(fs::read_to_string(&backup).unwrap(), "{}");
+        let saved: Settings = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved.integrations.restic_repository, settings.integrations.restic_repository);
+        let mut names: Vec<_> = fs::read_dir(temp.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["settings.json", "settings.json.bak"]);
     }
 }
 
