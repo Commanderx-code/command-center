@@ -178,3 +178,36 @@ jobs:
           name: arch-package
           path: /arch-release/*
           if-no-files-found: error
+
+  # Sign SLSA build provenance for the exact packages a release is drafted from, once they
+  # have built and passed every install test. Only tag runs attest, and only this job gets
+  # the signing permissions. release:draft verifies these attestations before drafting.
+  attest:
+    if: github.ref_type == 'tag'
+    needs: [build, install-deb, install-rpm, arch]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: packages
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: arch-package
+          path: arch-package
+      - name: Verify checksums
+        run: |
+          (cd packages && sha256sum --check --strict SHA256SUMS)
+          (cd arch-package && sha256sum --check --strict SHA256SUMS)
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            packages/*.deb
+            packages/*.rpm
+            arch-package/*.pkg.tar.zst

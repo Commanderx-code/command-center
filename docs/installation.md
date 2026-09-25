@@ -16,6 +16,14 @@ sha256sum --check --ignore-missing SHA256SUMS
 
 Each downloaded package must report `OK`. The `--ignore-missing` option lets you download only the package you need.
 
+Checksums catch a damaged download. To also confirm a package was built by this repository's CI from its release tag, and not replaced afterwards, verify its signed build provenance with the [GitHub CLI](https://cli.github.com/) (0.7.2 and later):
+
+```bash
+gh attestation verify ./command-center_<version>_amd64.deb --repo Commanderx-code/command-center
+```
+
+It must report that verification succeeded and name the `.github/workflows/linux-packages.yml` workflow and the release tag.
+
 On a compatible Debian/Ubuntu system:
 
 ```bash
