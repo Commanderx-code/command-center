@@ -38,8 +38,10 @@ if(!readFileSync(join(archDir,'SHA256SUMS'),'utf8').includes(`  ${arch}\n`))thro
 run('sha256sum',['--check','--strict','SHA256SUMS'],archDir);
 copyFileSync(join(archDir,arch),join(out,arch));
 const assets=[...packages,arch];
+// Each package must carry build provenance signed by this repository's packages workflow for this tag.
+for(const asset of assets)run('gh',['attestation','verify',join(out,asset),'--repo',repo,'--signer-workflow',`${repo}/.github/workflows/linux-packages.yml`,'--source-ref',`refs/tags/${tag}`,'--source-digest',head,'--deny-self-hosted-runners']);
 writeFileSync(join(out,'SHA256SUMS'),run('sha256sum',assets,out)+'\n');
 const notes=join(mkdtempSync(join(tmpdir(),'command-center-release-')),'notes.md');
-writeFileSync(notes,`${readFileSync(new URL('docs/release-notes.md',root),'utf8').trimEnd()}\n\n### Build and validation\n\nBoth packages were built once on Ubuntu 22.04 (glibc 2.35), then installed and launched as a normal user on Ubuntu 22.04, Debian 12, Ubuntu 24.04 and Fedora 43. The Arch package was built from the release tag with packaging/aur/PKGBUILD in a clean container, linted with namcap, installed and launched. Workflow run: ${passed.url}\n`);
+writeFileSync(notes,`${readFileSync(new URL('docs/release-notes.md',root),'utf8').trimEnd()}\n\n### Build and validation\n\nBoth packages were built once on Ubuntu 22.04 (glibc 2.35), then installed and launched as a normal user on Ubuntu 22.04, Debian 12, Ubuntu 24.04 and Fedora 43. The Arch package was built from the release tag with packaging/aur/PKGBUILD in a clean container, linted with namcap, installed and launched. Workflow run: ${passed.url}\n\nEach package carries signed build provenance from that workflow. To confirm a download was built by this repository's CI from the ${tag} tag, run \`gh attestation verify <file> --repo ${repo}\`.\n`);
 console.log(run('gh',['release','create',tag,...assets.map(a=>join(out,a)),join(out,'SHA256SUMS'),'--repo',repo,'--verify-tag','--draft','--title',`Command Center ${tag}`,'--notes-file',notes]));
 console.log(`Draft created from ${passed.url}. Download and verify the hosted assets, test the app on your machine, then publish on GitHub.`);
