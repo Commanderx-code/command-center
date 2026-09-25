@@ -15,6 +15,7 @@ import {
   parseFileHistory,
   formatBytes,
   parseSnapshotFiles,
+  cleanOutput,
 } from "../src/feature-model.js";
 
 test("integration preferences survive migration and retain explicit paths", () => {
@@ -145,4 +146,22 @@ test("byte sizes are human readable", () => {
   assert.equal(formatBytes(1536), "1.5 KiB");
   assert.equal(formatBytes(5 * 1024 ** 3), "5.0 GiB");
   assert.equal(formatBytes(null), "—");
+});
+
+test("job output cleaning strips terminal sequences as before", () => {
+  assert.equal(cleanOutput("a\x1b]0;title\x07b"), "ab");
+  assert.equal(cleanOutput("a\x1b]0;title\x1b\\b"), "ab");
+  assert.equal(cleanOutput("a\x1b]0;t\x1b\\visible\x07b"), "ab");
+  assert.equal(cleanOutput("see \x1b]8;;https://example.com\x1b\\label\x1b]8;;\x1b\\ now"), "see  now");
+  assert.equal(cleanOutput("a\x1b]0;broken\x1b]0;title\x07b"), "ab");
+  assert.equal(cleanOutput("a\x1b]0;unterminated"), "a\x1b]0;unterminated");
+  assert.equal(cleanOutput("\x1b[31mred\x1b[0m\rline\r\n"), "red\nline\r\n");
+  assert.equal(cleanOutput(), "");
+});
+
+test("job output cleaning stays linear on unterminated OSC floods", () => {
+  const flood = "\x1b]".repeat(1_000_000);
+  const started = Date.now();
+  assert.equal(cleanOutput(flood), flood);
+  assert.ok(Date.now() - started < 2000);
 });
