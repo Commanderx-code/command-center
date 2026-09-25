@@ -37,6 +37,8 @@ Rust tests exercise temporary Git remotes, fast-forward and divergence behavior,
 
 The **Security audit** workflow runs `cargo audit --file src-tauri/Cargo.lock` and `npm audit` on every pull request, every push to main, and weekly, so new advisories against unchanged dependencies are caught too. Run them locally before changing dependencies (`cargo install cargo-audit --locked` once). A known vulnerability fails the check; RustSec "unmaintained" and "unsound" notices are warnings.
 
+Workflow actions are pinned to full commit SHAs, with the version in a trailing comment. Dependabot (`.github/dependabot.yml`) opens grouped weekly updates for Actions, npm, and Cargo; review an Action update's release before merging it. The Commander Toolbox pin is excluded; update it with `scripts/pin-toolbox.mjs`.
+
 Tests do not push real repositories, run personal backups, activate Home Manager, or execute real Toolbox installers. UI changes should also be checked visually in the browser preview and, for native behavior, in the desktop app.
 
 ## Updating Commander Toolbox
