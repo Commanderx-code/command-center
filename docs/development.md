@@ -1,6 +1,8 @@
-# Development
+# 🛠️ Development
 
-[← Command Center](../README.md) · [Installation](installation.md) · [Contributing](../CONTRIBUTING.md)
+<sub>[🏠 README](../README.md) &nbsp;·&nbsp; [📚 Docs](README.md) &nbsp;·&nbsp; [📦 Installation](installation.md) &nbsp;·&nbsp; [🤝 Contributing](../CONTRIBUTING.md)</sub>
+
+> _Architecture, checks, Toolbox updates, packaging, and docs._
 
 ## Architecture
 
@@ -39,7 +41,8 @@ The **Security audit** workflow runs `cargo audit --file src-tauri/Cargo.lock` a
 
 Workflow actions are pinned to full commit SHAs, with the version in a trailing comment. Dependabot (`.github/dependabot.yml`) opens grouped weekly updates for Actions, npm, and Cargo; review an Action update's release before merging it. The Commander Toolbox pin is excluded; update it with `scripts/pin-toolbox.mjs`.
 
-Tests do not push real repositories, run personal backups, activate Home Manager, or execute real Toolbox installers. UI changes should also be checked visually in the browser preview and, for native behavior, in the desktop app.
+> [!NOTE]
+> Tests do not push real repositories, run personal backups, activate Home Manager, or execute real Toolbox installers. UI changes should also be checked visually in the browser preview and, for native behavior, in the desktop app.
 
 ## Updating Commander Toolbox
 
@@ -61,11 +64,17 @@ npm run desktop:package
 
 Tauri writes `.deb` and `.rpm` packages under `src-tauri/target/release/bundle/`. Keep versions aligned in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json` when preparing a version bump.
 
-Release packages come from CI, which builds on Ubuntu 22.04 and declares a glibc 2.35 floor. A local `desktop:package` build on a newer distribution links against its newer glibc, so `scripts/verify-packages.py` correctly rejects it as a release candidate. See [Releases](releases.md#package-validation-and-distribution-ci).
+> [!IMPORTANT]
+> Release packages come from CI, which builds on Ubuntu 22.04 and declares a glibc 2.35 floor. A local `desktop:package` build on a newer distribution links against its newer glibc, so `scripts/verify-packages.py` correctly rejects it as a release candidate. See [Releases](releases.md#package-validation-and-distribution-ci).
 
 ## Wiki
 
-The [GitHub wiki](https://github.com/Commanderx-code/command-center/wiki) is published from `docs/wiki/`. Edit the pages there and open a pull request; after it merges, the `Publish wiki` workflow copies them to the wiki. Edits made directly in the wiki are overwritten the next time that page changes here. Page links use wiki names such as `[Settings](Settings)`, so they only resolve on the wiki itself. `Home.md`, `_Sidebar.md`, and `_Footer.md` are the landing page, sidebar, and footer.
+The [GitHub wiki](https://github.com/Commanderx-code/command-center/wiki) is published from `docs/wiki/`. Edit the pages there and open a pull request; after it merges, the `Publish wiki` workflow copies them to the wiki.
+
+> [!WARNING]
+> Edits made directly in the wiki are overwritten the next time that page changes here.
+
+Page links use wiki names such as `[Settings](Settings)`, so they only resolve on the wiki itself. `Home.md`, `_Sidebar.md`, and `_Footer.md` are the landing page, sidebar, and footer.
 
 ## Documentation screenshots
 

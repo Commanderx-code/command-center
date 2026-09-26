@@ -1,4 +1,5 @@
-> Historical development notes. These describe an earlier version and may no longer match the app. See the [current user guide](../user-guide.md) for supported behavior.
+> [!WARNING]
+> **Historical development notes.** These describe an earlier version and may no longer match the app. See the [current user guide](../user-guide.md) for supported behavior.
 
 # Settings and UI polish
 
@@ -7,6 +8,7 @@ Existing settings are migrated through defaults; editor, terminal, and scan
 folder choices are retained.
 
 New preferences in Settings:
+
 - Theme: Dark, Light, or System (follows desktop color scheme).
 - Text size: Standard or Larger.
 - Repository layout: Cards or List.
@@ -26,6 +28,7 @@ Search shortcut: Ctrl+K (Cmd+K in a browser on macOS); Escape clears search.
 Errors remain visible until dismissed or replaced by a later notification.
 
 Validation:
+
 - `node --test tests/*.test.mjs` — preferences migration, normalization,
   simultaneous status badges, error-state filtering, and stable sorting.
 - `npm run check` and `npm run build`.

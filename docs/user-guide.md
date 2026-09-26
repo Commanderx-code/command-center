@@ -1,6 +1,8 @@
-# User guide
+# 🧭 User guide
 
-[← Command Center](../README.md) · [Installation](installation.md) · [Development](development.md)
+<sub>[🏠 README](../README.md) &nbsp;·&nbsp; [📚 Docs](README.md) &nbsp;·&nbsp; [📦 Installation](installation.md) &nbsp;·&nbsp; [🛠️ Development](development.md)</sub>
+
+> _Features, integrations, command behavior, and local data._
 
 ## Features
 
@@ -40,7 +42,8 @@ Future catalog updates require updating the pinned revision in `src-tauri/Cargo.
 
 ## Operational behavior
 
-Every operation displays its exact command and working directory for review. Repository Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
+> [!IMPORTANT]
+> Every operation displays its exact command and working directory for review. Repository Git credentials use existing helpers; SSH uses batch mode so unavailable authentication fails visibly instead of waiting for an invisible terminal prompt.
 
 Background jobs show output and a recorded exit status. Full recovery backups use a terminal and write a completion receipt back to the app; terminal input/output is not captured. If the terminal closes without a receipt, use **Terminal closed? Stop monitoring** only after checking that the workflow has stopped. Closing the app normally is blocked while a job is running. After a crash, previously running jobs are marked interrupted; inspect the command before retrying.
 
@@ -48,7 +51,8 @@ Background jobs show output and a recorded exit status. Full recovery backups us
 
 Repository actions (fetch, pull, push, staging, commits, branches, stashes) and project tasks run alongside each other when they use different repositories. Everything else, including Toolbox installers, backups and restores, Home Manager, updates, workflows, personal tools, and quick actions, is a workstation task: one runs at a time, but it can run alongside repository jobs in other folders. Two jobs never run in the same working directory at once, and the embedded terminal holds one interactive session. External-terminal jobs do not use the embedded terminal. A job that has to wait says which running job it is waiting for. Each job is stopped individually from Activity; the tray shows how many are running.
 
-Restore destinations must be nonexistent directories beneath your home with an existing parent. Restore uses `--overwrite never` and `--verify`. Include fields accept Restic patterns; leaving them blank restores the whole snapshot. This is file recovery into a staging folder, not automatic OS replacement or a bootable disk-image restore.
+> [!NOTE]
+> Restore destinations must be nonexistent directories beneath your home with an existing parent. Restore uses `--overwrite never` and `--verify`. Include fields accept Restic patterns; leaving them blank restores the whole snapshot. This is file recovery into a staging folder, not automatic OS replacement or a bootable disk-image restore.
 
 Configuration saves check the loaded revision and source path, validate the proposed content, save the previous contents, and replace the source atomically. The review screen displays both old and proposed content. Ghostty edits retain unrelated lines. Fastfetch edits preserve JSONC comments outside rewritten properties and retain custom module options; reordering rewrites the modules array. Previews are illustrative rather than a terminal emulator or executable Fastfetch session.
 

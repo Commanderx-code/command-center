@@ -1,12 +1,15 @@
-# Installation
+# 📦 Installation
 
-[← Command Center](../README.md) · [User guide](user-guide.md) · [Development](development.md)
+<sub>[🏠 README](../README.md) &nbsp;·&nbsp; [📚 Docs](README.md) &nbsp;·&nbsp; [🧭 User guide](user-guide.md) &nbsp;·&nbsp; [🛠️ Development](development.md)</sub>
+
+> _Release packages, verification, and building from source._
 
 ## Release packages
 
 Download a package and `SHA256SUMS` from the [GitHub releases page](https://github.com/Commanderx-code/command-center/releases/latest).
 
-Packages target **Linux x86_64 / amd64** and require **GTK 3, WebKitGTK 4.1, and glibc 2.35 or newer** from 0.6.0 (0.5.x packages require glibc 2.39). Packages declare these dependencies. Both packages are built once on Ubuntu 22.04, then installed and launched on Ubuntu 22.04, Debian 12, Ubuntu 24.04, and Fedora 43. See the release notes for the workflow run. ARM, Windows, and macOS packages are not currently published.
+> [!IMPORTANT]
+> Packages target **Linux x86_64 / amd64** and require **GTK 3, WebKitGTK 4.1, and glibc 2.35 or newer** from 0.6.0 (0.5.x packages require glibc 2.39). Packages declare these dependencies. Both packages are built once on Ubuntu 22.04, then installed and launched on Ubuntu 22.04, Debian 12, Ubuntu 24.04, and Fedora 43. See the release notes for the workflow run. ARM, Windows, and macOS packages are not currently published.
 
 To verify a downloaded package, put it and `SHA256SUMS` in the same directory and run:
 
@@ -42,9 +45,13 @@ On Arch or an Arch-based system such as Garuda (0.6.0 and later):
 sudo pacman -U ./command-center-0.7.1-1-x86_64.pkg.tar.zst
 ```
 
-The Arch package is built from the release tag with `packaging/aur/PKGBUILD` in a clean Arch container and tracks current Arch libraries; update your system before installing it. To build it yourself instead, run `makepkg -si` from a copy of `packaging/aur/`.
+> [!TIP]
+> The Arch package is built from the release tag with `packaging/aur/PKGBUILD` in a clean Arch container and tracks current Arch libraries; update your system before installing it. To build it yourself instead, run `makepkg -si` from a copy of `packaging/aur/`.
 
-Launch **Command Center** from your application menu. Run the app as your normal user, without `sudo`.
+Launch **Command Center** from your application menu.
+
+> [!WARNING]
+> Run the app as your normal user, without `sudo`.
 
 ## From source on Arch/Garuda
 
@@ -88,7 +95,8 @@ The per-user installer writes `~/.local/bin/command-center`, an icon, and a desk
 | `npm run desktop:install` | Release executable and per-user application-menu entry.        |
 | `npm run desktop:package` | `.deb` and `.rpm` files in `src-tauri/target/release/bundle/`. |
 
-The browser preview uses sample repositories and configurations. It cannot run Git operations, access backups, launch applications, or save real configuration files. Source changes rebuild automatically; refresh the browser to load them.
+> [!NOTE]
+> The browser preview uses sample repositories and configurations. It cannot run Git operations, access backups, launch applications, or save real configuration files. Source changes rebuild automatically; refresh the browser to load them.
 
 ## Connect integrations
 
@@ -96,4 +104,5 @@ After installation, open **Settings → System integrations**. Command Center ca
 
 Git, Home Manager, Restic, Ghostty, Fastfetch, and backup helpers are used when installed and configured. They are not all required to open the app. See the [user guide](user-guide.md#connect-your-setup) for each integration.
 
-File restores require **Restic 0.17 or newer** for its no-overwrite protection; Command Center checks support before preparing a restore. Some distributions ship an older Restic independently of Command Center.
+> [!NOTE]
+> File restores require **Restic 0.17 or newer** for its no-overwrite protection; Command Center checks support before preparing a restore. Some distributions ship an older Restic independently of Command Center.

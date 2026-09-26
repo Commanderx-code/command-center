@@ -1,4 +1,5 @@
-> Historical development notes. These describe an earlier version and may no longer match the app. See the [current user guide](../user-guide.md) for supported behavior.
+> [!WARNING]
+> **Historical development notes.** These describe an earlier version and may no longer match the app. See the [current user guide](../user-guide.md) for supported behavior.
 
 # Basic settings update
 

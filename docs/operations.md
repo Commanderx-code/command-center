@@ -1,6 +1,8 @@
-# Workflows, profiles, and recovery verification
+# 🔁 Workflows, profiles, and recovery verification
 
-[← Command Center](../README.md) · [User guide](user-guide.md)
+<sub>[🏠 README](../README.md) &nbsp;·&nbsp; [📚 Docs](README.md) &nbsp;·&nbsp; [🧭 User guide](user-guide.md)</sub>
+
+> _Maintenance recipes, machine profiles, personal tools, recovery tests, and notifications._
 
 ## Maintenance workflows
 
@@ -16,7 +18,12 @@ The weekly maintenance example checks local backup-drive readiness, runs the per
 
 A machine profile is a named, ordered setup recipe for a workstation, laptop, or new install. Add repository clones, Toolbox installers, configuration operations, and other steps through the same editor. Set a profile-specific dotfiles checkout and Home Manager flake profile, or leave them blank to use Settings. These overrides apply only to that profile's reviewed commands.
 
-**Review profile** shows whether each command can be prepared on the current machine. Optional path checks show **Present · inspect before skipping** when a file or directory exists. Presence does not establish that the right version or content is installed. **Skip inspected step** requires confirmation. Missing prerequisites can be satisfied by earlier steps; the app rechecks each command immediately before execution.
+**Review profile** shows whether each command can be prepared on the current machine. Optional path checks show **Present · inspect before skipping** when a file or directory exists.
+
+> [!CAUTION]
+> Presence does not establish that the right version or content is installed.
+
+**Skip inspected step** requires confirmation. Missing prerequisites can be satisfied by earlier steps; the app rechecks each command immediately before execution.
 
 Profiles operate on the local computer. They do not connect to remote machines, automatically replace configuration files, or bypass Toolbox installer prompts. Clone destinations must be new directories. Recipes and personal tools live in `operations.json`. In 0.5.0, [setup bundles](setup-and-workspaces.md) include them; preference-only Settings exports still do not.
 
@@ -44,7 +51,10 @@ The prerequisite field checks whether the executable is available. It does not i
 
 The test uses `restic dump` to restore the selected file into a temporary directory, compares its SHA-256 against the saved baseline, and removes its temporary copy on normal completion. It never overwrites the original. A mismatch or missing file fails visibly in Activity. Abrupt process termination or power loss can leave a temporary copy for normal system temporary-file cleanup.
 
-Recent recovery results include the baseline ID, result, and timestamp. The baseline selector maps IDs to recorded files and dates. Results follow Activity's 100-job retention. Success proves recovery of that selected file from that snapshot using the current credentials; it does not certify all snapshots, all files, or a bootable system restore. A file changed after recording may legitimately mismatch another snapshot.
+Recent recovery results include the baseline ID, result, and timestamp. The baseline selector maps IDs to recorded files and dates. Results follow Activity's 100-job retention.
+
+> [!NOTE]
+> Success proves recovery of that selected file from that snapshot using the current credentials; it does not certify all snapshots, all files, or a bootable system restore. A file changed after recording may legitimately mismatch another snapshot.
 
 ## Change timeline
 
