@@ -172,6 +172,7 @@ Open `http://127.0.0.1:4173` for a browser preview with sample data. Desktop ope
 |                                                                                                  |                                                                         |
 | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | 📖 **[Wiki: how to use Command Center](https://github.com/Commanderx-code/command-center/wiki)** | A step-by-step guide to every page and feature, plus troubleshooting.   |
+| 📚 **[Documentation index](docs/README.md)**                                                     | Every reference doc in one place.                                       |
 | 📥 [Installation](docs/installation.md)                                                          | Packages, requirements, checksums, and source builds.                   |
 | 🧭 [User guide](docs/user-guide.md)                                                              | Features, integrations, command behavior, and local data.               |
 | 🧑‍💻 [Development](docs/development.md)                                                            | Repository layout, checks, and Toolbox updates.                         |

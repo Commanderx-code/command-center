@@ -1,12 +1,20 @@
-# Setup bundles, onboarding, and project workspaces
+# 🚚 Setup bundles, onboarding, and project workspaces
 
-These features are available in **Command Center 0.5.0** and later. Merge imports and automatic recovery of interrupted imports require **0.6.0**.
+<sub>[🏠 README](../README.md) &nbsp;·&nbsp; [📚 Docs](README.md) &nbsp;·&nbsp; [🧭 User guide](user-guide.md) &nbsp;·&nbsp; [🔁 Workflows](operations.md)</sub>
+
+> _Move your setup between machines, first-run setup, and per-project workspaces._
+
+> [!NOTE]
+> These features are available in **Command Center 0.5.0** and later. Merge imports and automatic recovery of interrupted imports require **0.6.0**.
 
 ## Move a setup between machines
 
 Open **Settings → Setup & portability → Export setup bundle**. Review the full JSON before exporting it to Downloads. The bundle contains saved settings, scan roots and discovered repository paths, repository favorites/groups/launch profiles/tasks/services, maintenance workflows, machine profiles, personal tools, notification preferences, and Toolbox favorites. Unsaved form drafts are not included.
 
-It does not copy repository contents, backups, credential files, activity logs, recovery baselines, or configuration-file contents. Password-file paths and wallet identifiers are removed, along with remote Restic addresses that might contain credentials. Saved commands and workflow input values are included verbatim: inspect them for private values before sharing the file.
+It does not copy repository contents, backups, credential files, activity logs, recovery baselines, or configuration-file contents. Password-file paths and wallet identifiers are removed, along with remote Restic addresses that might contain credentials.
+
+> [!WARNING]
+> Saved commands and workflow input values are included verbatim: inspect them for private values before sharing the file.
 
 On the destination, choose **Import setup bundle**, then set the destination home folder. The preview rewrites the source home prefix and `~/` in structured paths, including scan roots, working directories, integration paths, workflow paths, and workspace keys. It leaves other absolute paths, URLs, command text, and arbitrary input values unchanged. Review those values for machine-specific references. Missing repositories are remembered for discovery but are not cloned; use a reviewed machine-profile clone step if needed.
 
@@ -17,7 +25,8 @@ Choose an import method:
 
 The preview shows the exact result that will be saved. A confirmation checkbox is required. Editing the home folder or changing the method refreshes the preview and clears the checkbox. The backend validates the bundle again when applying it and rejects the import if this machine's saved setup changed after the preview. Unknown bundle versions, invalid definitions, path collisions, and files over 2 MB are rejected. Current local password-file/wallet connections are retained. A local Restic path in the bundle replaces the current repository path; an omitted remote connection keeps the current connection.
 
-No imported command runs automatically. Both setup bundles and preference imports retain this machine’s existing backup health helper, including an empty value. Configure that automatic helper separately in Settings after reviewing its executable. The app reloads after importing, clears old workflow progress, and offers setup review on the dashboard. A running job blocks import.
+> [!IMPORTANT]
+> No imported command runs automatically. Both setup bundles and preference imports retain this machine’s existing backup health helper, including an empty value. Configure that automatic helper separately in Settings after reviewing its executable. The app reloads after importing, clears old workflow progress, and offers setup review on the dashboard. A running job blocks import.
 
 Before replacing files, the app saves the previous bytes to a private `setup-backups/before-import-<timestamp>.json` file under its local app-data directory, then records that backup in `setup-import-journal.json`. Settings shows the backup path after reload. Ordinary write failures roll back completed replacements immediately.
 
