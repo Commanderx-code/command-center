@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Report a security vulnerability
+  - name: 🔐 Report a security vulnerability
     url: https://github.com/Commanderx-code/command-center/security/advisories/new
     about: Report vulnerabilities privately, not as a public issue. See SECURITY.md.
+  - name: 📖 Read the Wiki guide
+    url: https://github.com/Commanderx-code/command-center/wiki
+    about: Step-by-step help for every page, plus troubleshooting and FAQ.

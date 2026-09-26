@@ -1,28 +1,35 @@
-name: Bug report
+name: 🐛 Bug report
 description: Report a reproducible problem with Command Center.
 title: "[Bug]: "
 body:
   - type: markdown
     attributes:
-      value: Please check existing issues first. Remove credentials and personal information from logs and screenshots.
+      value: |
+        Thanks for taking the time to report a problem! 🙏
+
+        > [!WARNING]
+        > Please check [existing issues](https://github.com/Commanderx-code/command-center/issues) first, and remove credentials and personal information from logs and screenshots.
+        >
+        > **Found a security vulnerability?** Don't file it here. [Report it privately](https://github.com/Commanderx-code/command-center/security/advisories/new) instead.
   - type: input
     id: version
     attributes:
-      label: App version or commit
-      placeholder: "0.3.2"
+      label: 📦 App version or commit
+      description: Find it under **Settings → About & updates**.
+      placeholder: "0.7.1"
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: Linux distribution and desktop environment
+      label: 🐧 Linux distribution and desktop environment
       placeholder: "Garuda Linux, KDE Plasma, Wayland"
     validations:
       required: true
   - type: dropdown
     id: installation
     attributes:
-      label: Installation or run method
+      label: 💿 Installation or run method
       options:
         - .deb package
         - .rpm package
@@ -35,7 +42,7 @@ body:
   - type: textarea
     id: reproduction
     attributes:
-      label: Steps to reproduce
+      label: 🔁 Steps to reproduce
       description: Include the view, action, and relevant integration setup.
       placeholder: "1. Open…\n2. Choose…\n3. Observe…"
     validations:
@@ -43,11 +50,12 @@ body:
   - type: textarea
     id: behavior
     attributes:
-      label: Expected and actual behavior
+      label: 🤔 Expected and actual behavior
+      description: What did you expect to happen, and what happened instead?
     validations:
       required: true
   - type: textarea
     id: details
     attributes:
-      label: Relevant logs or screenshots
+      label: 📋 Relevant logs or screenshots
       description: Include only the relevant, redacted excerpt. Note any workaround you found.
