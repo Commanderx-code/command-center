@@ -1,0 +1,43 @@
+name: Publish wiki
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/wiki.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+jobs:
+  # docs/wiki/ is the source of truth for the GitHub wiki. Pages are copied over and
+  # committed; pages that exist only in the wiki are left alone.
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Push pages to the wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.wiki.git" wiki
+          cp docs/wiki/*.md wiki/
+          cd wiki
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Sync wiki from ${REPOSITORY}@${SHA::7}"
+          git push
