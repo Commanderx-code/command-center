@@ -515,3 +515,38 @@ button:disabled { cursor:default; }
 #services-view #service-search, #timeline-view #timeline-search { flex:1; min-width:180px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface-soft); color:var(--text); font:inherit; }
 #config-view label[for="config-text"] > strong { font-size:15px; }
 #operations-view .module-panel > .secondary-button + .secondary-button { margin-left:8px; }
+
+/* Dialog and command palette polish */
+dialog { --dlg-tint: rgba(99,230,255,.12); --dlg-tint: color-mix(in srgb, var(--cyan) 14%, transparent); --dlg-tint-soft: rgba(99,230,255,.05); --dlg-tint-soft: color-mix(in srgb, var(--cyan) 6%, transparent); font-size:13px; line-height:1.6; border-color:var(--line); border-radius:16px; background-image:radial-gradient(circle at 100% 0%, var(--dlg-tint-soft), transparent 40%); }
+:root[data-text-size="large"] dialog { font-size:15px; }
+dialog[open] { animation:dialog-in .18s ease-out; }
+@keyframes dialog-in { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
+dialog::before { content:""; position:sticky; top:0; display:block; height:3px; margin-bottom:-3px; background:linear-gradient(90deg, var(--cyan), transparent 70%); opacity:.7; z-index:3; }
+dialog h2 { font-size:22px; letter-spacing:-.02em; }
+dialog h3 { font-size:15px; }
+dialog :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { transition:border-color .15s ease, box-shadow .15s ease; }
+dialog :is(input:not([type=checkbox]):not([type=radio]), select, textarea):focus { outline:none; border-color:var(--cyan); box-shadow:0 0 0 3px var(--dlg-tint); }
+dialog :is(input[type=checkbox], input[type=radio]) { accent-color:var(--cyan); }
+dialog .dialog-actions, dialog .button-row:last-child { gap:10px; }
+dialog pre.output:empty { min-height:44px; border-style:dashed; background:transparent; }
+dialog details > summary { cursor:pointer; font-weight:700; }
+/* Command palette */
+#command-palette .dialog-card { padding:24px; }
+#command-palette h2 { margin:0 0 14px; font-size:18px; }
+#command-palette .search-box { padding:0 14px; border-radius:10px; transition:border-color .15s ease, box-shadow .15s ease; }
+#command-palette .search-box:focus-within { border-color:var(--cyan); box-shadow:0 0 0 3px var(--dlg-tint); }
+#command-palette #palette-search { min-height:44px; border:0; outline:none; background:transparent; color:var(--text); font-size:14px; }
+#command-palette .settings-help { margin:10px 0 0; }
+#command-palette .palette-row { flex-direction:row; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; margin-bottom:6px; cursor:pointer; transition:border-color .12s ease, background .12s ease; }
+#command-palette .palette-row strong { font-size:13px; }
+#command-palette .palette-row small { font-size:11px; padding:2px 8px; border:1px solid var(--line); border-radius:999px; white-space:nowrap; }
+#command-palette .palette-row:hover { border-color:var(--dlg-tint); background:var(--dlg-tint-soft); }
+#command-palette .palette-selected { border-color:var(--cyan); background:var(--dlg-tint-soft); box-shadow:inset 3px 0 var(--cyan); }
+#command-palette .palette-selected small { color:var(--cyan); border-color:var(--dlg-tint); }
+#command-palette #palette-status { color:var(--muted); font-size:11px; margin:8px 0 0; }
+/* Repository details dialog */
+#repo-detail-dialog .module-panel, #repo-detail-dialog section.panel { border-radius:12px; }
+#repo-detail-dialog label:has(> select), #repo-detail-dialog label:has(> input) { font-size:12px; color:var(--muted); }
+@media (prefers-reduced-motion: reduce) { dialog[open] { animation:none; } }
+:root[data-theme="light"] { --panel-strong:#fff; }
+#command-palette #palette-search:focus, #command-palette #palette-search:focus-visible { outline:none; box-shadow:none; }
