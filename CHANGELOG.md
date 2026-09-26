@@ -1,10 +1,28 @@
-# Changelog
+<div align="center">
 
-Release downloads and full notes are available on [GitHub Releases](https://github.com/Commanderx-code/command-center/releases).
+# 📝 Changelog
+
+Release highlights for Command Center. Downloads and full notes are on **[GitHub Releases](https://github.com/Commanderx-code/command-center/releases)**.
+
+<sub>[🏠 README](README.md) &nbsp;·&nbsp; [📚 Docs](docs/README.md) &nbsp;·&nbsp; [⬇️ Latest release](https://github.com/Commanderx-code/command-center/releases/latest)</sub>
+
+</div>
+
+| Version                      | Date       | Highlights                                                     |
+| ---------------------------- | ---------- | -------------------------------------------------------------- |
+| 🔒 [0.7.1](#071--2026-09-25) | 2026-09-25 | Security release                                               |
+| ✨ [0.7.0](#070--2026-09-24) | 2026-09-24 | Backup file history, Wiki user guide                           |
+| ✨ [0.6.0](#060--2026-09-24) | 2026-09-24 | MIT license, merge imports, parallel jobs, glibc 2.35 packages |
+| 🔒 [0.5.1](#051--2026-09-24) | 2026-09-24 | Security release                                               |
+| ✨ [0.5.0](#050--2026-09-23) | 2026-09-23 | Setup bundles, first-run wizard, project tasks                 |
+| ✨ [0.4.0](#040--2026-09-22) | 2026-09-22 | Workflows, machine profiles, recovery tests, notifications     |
+| ✨ [0.3.3](#033--2026-09-21) | 2026-09-21 | Staging and commits, settings search                           |
+| 🚀 [0.3.2](#032--2026-09-21) | 2026-09-21 | Toolbox catalog, embedded terminal, first packages             |
 
 ## [0.7.1](https://github.com/Commanderx-code/command-center/releases/tag/v0.7.1) — 2026-09-25
 
-Security release. All 0.7.0 users should upgrade.
+> [!IMPORTANT]
+> **Security release.** All 0.7.0 users should upgrade.
 
 - Per-file diffs in Repository Details no longer inspect nested submodule working files, so a submodule's own Git filters cannot run when you view its diff. The file list and full diff already worked this way.
 - **Read recovery notes** refuses devices, FIFOs and other non-regular files and reads at most 256 KB, so a setting such as `/dev/zero` can no longer exhaust memory.
@@ -32,7 +50,8 @@ Security release. All 0.7.0 users should upgrade.
 
 ## [0.5.1](https://github.com/Commanderx-code/command-center/releases/tag/v0.5.1) — 2026-09-24
 
-Security release. All 0.5.0 users should upgrade.
+> [!IMPORTANT]
+> **Security release.** All 0.5.0 users should upgrade.
 
 - Automatic repository inspection no longer runs repository-configured programs: hooks, fsmonitor commands, content filters, external diff/text conversion, signature verifiers, and promisor fetches are disabled for status, diff, and log previews. Reviewed Git actions keep normal hooks, filters, and signing.
 - Changed submodule commits remain visible; nested submodule working files are no longer inspected automatically.
@@ -87,7 +106,8 @@ Security release. All 0.5.0 users should upgrade.
 - Enabled every workspace as a startup page and improved stale health-result handling.
 - Refreshed repository documentation and download links.
 
-Linux x86_64 `.deb` and `.rpm` packages require glibc 2.39+, GTK 3, and WebKitGTK 4.1. Cross-distribution installation has not yet been tested.
+> [!NOTE]
+> Linux x86_64 `.deb` and `.rpm` packages require glibc 2.39+, GTK 3, and WebKitGTK 4.1. Cross-distribution installation has not yet been tested.
 
 ## [0.3.2](https://github.com/Commanderx-code/command-center/releases/tag/v0.3.2) — 2026-09-21
 
@@ -111,4 +131,5 @@ This release also includes repository management, Home Manager integration, back
 
 ### Package compatibility
 
-The release binaries require glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. They were built on Arch/Garuda; cross-distribution installation has not yet been tested.
+> [!NOTE]
+> The release binaries require glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. They were built on Arch/Garuda; cross-distribution installation has not yet been tested.
