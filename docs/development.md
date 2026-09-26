@@ -63,6 +63,10 @@ Tauri writes `.deb` and `.rpm` packages under `src-tauri/target/release/bundle/`
 
 Release packages come from CI, which builds on Ubuntu 22.04 and declares a glibc 2.35 floor. A local `desktop:package` build on a newer distribution links against its newer glibc, so `scripts/verify-packages.py` correctly rejects it as a release candidate. See [Releases](releases.md#package-validation-and-distribution-ci).
 
+## Wiki
+
+The [GitHub wiki](https://github.com/Commanderx-code/command-center/wiki) is published from `docs/wiki/`. Edit the pages there and open a pull request; after it merges, the `Publish wiki` workflow copies them to the wiki. Edits made directly in the wiki are overwritten the next time that page changes here. Page links use wiki names such as `[Settings](Settings)`, so they only resolve on the wiki itself. `Home.md`, `_Sidebar.md`, and `_Footer.md` are the landing page, sidebar, and footer.
+
 ## Documentation screenshots
 
 The README screenshot is captured from the actual browser preview with sample data. Keep the preview notice visible and avoid publishing personal repository contents, credentials, or terminal transcripts. Refresh `docs/images/dashboard.jpg` when the dashboard changes materially.
